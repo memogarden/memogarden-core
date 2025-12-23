@@ -60,7 +60,7 @@ def init_db():
             return
 
         # Fresh database - apply current schema
-        schema_path = Path(__file__).parent / "db" / "schema.sql"
+        schema_path = Path(__file__).parent.parent / "schema" / "schema.sql"
         if schema_path.exists():
             with open(schema_path, "r") as f:
                 schema_sql = f.read()

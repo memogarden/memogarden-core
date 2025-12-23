@@ -13,7 +13,7 @@ def test_db():
     db_path = ":memory:"
 
     # Create database with schema
-    schema_path = Path(__file__).parent.parent / "memogarden_core" / "db" / "schema.sql"
+    schema_path = Path(__file__).parent.parent / "memogarden_core" / "schema" / "schema.sql"
 
     db = sqlite3.connect(db_path)
     db.row_factory = sqlite3.Row

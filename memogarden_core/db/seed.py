@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from memogarden_core.config import settings
 from memogarden_core.database import create_entity, init_db
+from memogarden_core.utils import isodatetime
 
 
 async def seed_transactions():
@@ -33,7 +34,7 @@ async def seed_transactions():
             {
                 "description": "Coffee at Starbucks",
                 "amount": 6.50,
-                "transaction_date": (today - timedelta(days=1)).isoformat(),
+                "transaction_date": isodatetime.to_datestring(today - timedelta(days=1)),
                 "account": "Personal",
                 "category": "Food",
                 "notes": "Morning coffee before work"
@@ -41,7 +42,7 @@ async def seed_transactions():
             {
                 "description": "Grocery shopping",
                 "amount": 123.45,
-                "transaction_date": (today - timedelta(days=2)).isoformat(),
+                "transaction_date": isodatetime.to_datestring(today - timedelta(days=2)),
                 "account": "Household",
                 "category": "Food",
                 "notes": "Weekly groceries at FairPrice"
@@ -49,7 +50,7 @@ async def seed_transactions():
             {
                 "description": "Taxi to airport",
                 "amount": 28.00,
-                "transaction_date": (today - timedelta(days=3)).isoformat(),
+                "transaction_date": isodatetime.to_datestring(today - timedelta(days=3)),
                 "account": "Personal",
                 "category": "Transport",
                 "notes": None
@@ -57,7 +58,7 @@ async def seed_transactions():
             {
                 "description": "Netflix subscription",
                 "amount": 16.98,
-                "transaction_date": (today - timedelta(days=5)).isoformat(),
+                "transaction_date": isodatetime.to_datestring(today - timedelta(days=5)),
                 "account": "Household",
                 "category": "Entertainment",
                 "notes": "Monthly subscription"
@@ -65,7 +66,7 @@ async def seed_transactions():
             {
                 "description": "Lunch at hawker center",
                 "amount": 5.00,
-                "transaction_date": (today - timedelta(days=6)).isoformat(),
+                "transaction_date": isodatetime.to_datestring(today - timedelta(days=6)),
                 "account": "Personal",
                 "category": "Food",
                 "notes": None
@@ -73,7 +74,7 @@ async def seed_transactions():
             {
                 "description": "Electricity bill",
                 "amount": 82.50,
-                "transaction_date": (today - timedelta(days=7)).isoformat(),
+                "transaction_date": isodatetime.to_datestring(today - timedelta(days=7)),
                 "account": "Household",
                 "category": "Utilities",
                 "notes": "SP Group monthly bill"
@@ -81,7 +82,7 @@ async def seed_transactions():
             {
                 "description": "Bookstore purchase",
                 "amount": 34.90,
-                "transaction_date": (today - timedelta(days=10)).isoformat(),
+                "transaction_date": isodatetime.to_datestring(today - timedelta(days=10)),
                 "account": "Personal",
                 "category": "Shopping",
                 "notes": "Two technical books"
@@ -89,7 +90,7 @@ async def seed_transactions():
             {
                 "description": "Doctor consultation",
                 "amount": 45.00,
-                "transaction_date": (today - timedelta(days=12)).isoformat(),
+                "transaction_date": isodatetime.to_datestring(today - timedelta(days=12)),
                 "account": "Personal",
                 "category": "Healthcare",
                 "notes": "Annual checkup"
@@ -97,7 +98,7 @@ async def seed_transactions():
             {
                 "description": "MRT card top-up",
                 "amount": 50.00,
-                "transaction_date": (today - timedelta(days=14)).isoformat(),
+                "transaction_date": isodatetime.to_datestring(today - timedelta(days=14)),
                 "account": "Personal",
                 "category": "Transport",
                 "notes": None
@@ -105,7 +106,7 @@ async def seed_transactions():
             {
                 "description": "Internet bill",
                 "amount": 49.90,
-                "transaction_date": (today - timedelta(days=15)).isoformat(),
+                "transaction_date": isodatetime.to_datestring(today - timedelta(days=15)),
                 "account": "Household",
                 "category": "Utilities",
                 "notes": "Singtel fiber broadband"
@@ -113,7 +114,7 @@ async def seed_transactions():
             {
                 "description": "Restaurant dinner",
                 "amount": 78.50,
-                "transaction_date": (today - timedelta(days=18)).isoformat(),
+                "transaction_date": isodatetime.to_datestring(today - timedelta(days=18)),
                 "account": "Personal",
                 "category": "Food",
                 "notes": "Dinner with friends"
@@ -121,7 +122,7 @@ async def seed_transactions():
             {
                 "description": "Clothing purchase",
                 "amount": 89.00,
-                "transaction_date": (today - timedelta(days=20)).isoformat(),
+                "transaction_date": isodatetime.to_datestring(today - timedelta(days=20)),
                 "account": "Personal",
                 "category": "Shopping",
                 "notes": "Uniqlo sale"
@@ -129,7 +130,7 @@ async def seed_transactions():
             {
                 "description": "Movie tickets",
                 "amount": 24.00,
-                "transaction_date": (today - timedelta(days=22)).isoformat(),
+                "transaction_date": isodatetime.to_datestring(today - timedelta(days=22)),
                 "account": "Personal",
                 "category": "Entertainment",
                 "notes": "Weekend movie"
@@ -137,7 +138,7 @@ async def seed_transactions():
             {
                 "description": "Pharmacy",
                 "amount": 18.50,
-                "transaction_date": (today - timedelta(days=25)).isoformat(),
+                "transaction_date": isodatetime.to_datestring(today - timedelta(days=25)),
                 "account": "Personal",
                 "category": "Healthcare",
                 "notes": "Vitamins and supplements"
@@ -145,7 +146,7 @@ async def seed_transactions():
             {
                 "description": "Grab ride",
                 "amount": 12.30,
-                "transaction_date": (today - timedelta(days=28)).isoformat(),
+                "transaction_date": isodatetime.to_datestring(today - timedelta(days=28)),
                 "account": "Personal",
                 "category": "Transport",
                 "notes": None
