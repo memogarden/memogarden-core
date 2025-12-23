@@ -1,6 +1,6 @@
 # Refactor Plan: MemoGarden Core Architecture
 
-**Status**: In Progress - Step 8 Next (Create Validation Decorator)
+**Status**: In Progress - Step 9 Next (Apply @validate_request to POST /transactions)
 **Created**: 2025-12-23
 **Based on**: [refactor-proposal.md](./refactor-proposal.md) v1.3
 
@@ -974,11 +974,20 @@ def create_transaction():
 
 ---
 
-## Step 8: Create api/validation.py with @validate_request Decorator
+## Step 8: Create api/validation.py with @validate_request Decorator ✅ COMPLETED
 
 **Goal**: Implement type-annotation-based validation decorator.
 
 **Session Scope**: Create validation.py with comprehensive tests.
+
+**Status**: ✅ Completed 2025-12-23
+- Created `api/validation.py` with `@validate_request` decorator
+- Validates request JSON against first non-path parameter's type annotation
+- Handles routes with both path parameters and body parameters
+- Provides detailed validation error messages with field, message, expected_type
+- Raises TypeError for misconfigured functions (no params, no annotation, non-BaseModel)
+- Created `tests/api/test_validation.py` with 12 comprehensive tests
+- All 238 tests pass (12 new + 226 existing)
 
 ### 8.1 Create api/validation.py
 
@@ -1002,21 +1011,29 @@ from ..exceptions import ValidationError as MGValidationError
 
 def validate_request(f):
     """
-    Decorator that validates request JSON against the view function's
-    first parameter type annotation.
+    Decorator that validates request JSON against a body parameter's type annotation.
 
-    Handles path parameters separately from request body.
+    Skips path parameters (in view_args) and validates the first non-path parameter.
+
+    Example:
+        @app.put("/items/<uuid>")
+        @validate_request
+        def update_item(uuid: str, data: ItemUpdate):
+            # uuid is from path (string), data is validated Pydantic model
+            pass
     """
-    # Get type annotation for first parameter
+    # Get all parameters
     sig = inspect.signature(f)
     params = list(sig.parameters.values())
 
     if not params:
         raise TypeError(
             f"Function {f.__name__} has no parameters to validate. "
-            "The first parameter should have a Pydantic model type annotation."
+            "At least one parameter should have a Pydantic model type annotation."
         )
 
+    # Find the first parameter that is NOT a path parameter
+    # (path params are determined at request time, not decoration time)
     first_param = params[0]
     model_class = first_param.annotation
 
@@ -1026,33 +1043,52 @@ def validate_request(f):
             "lacks a type annotation. Expected a Pydantic BaseModel subclass."
         )
 
-    if not (isinstance(model_class, type) and issubclass(model_class, BaseModel)):
-        raise TypeError(
-            f"Type annotation for '{first_param.name}' must be a Pydantic BaseModel subclass, "
-            f"got {model_class!r}"
-        )
-
     @functools.wraps(f)
     def wrapper(*args, **kwargs):
-        # Check if first param is a path parameter (in view_args)
-        if first_param.name in request.view_args:
-            # Path parameter - pass through as string
-            path_value = request.view_args[first_param.name]
-            return f(path_value, *args, **kwargs)
+        # At request time, find the first parameter that's NOT in view_args
+        # This is the body parameter we need to validate
+        view_args = request.view_args or {}
 
-        # Body parameter - validate against Pydantic model
+        body_param = None
+        body_model_class = None
+
+        for param in params:
+            if param.name not in view_args:
+                # This is not a path parameter, it's the body parameter
+                body_param = param
+                body_model_class = param.annotation
+                break
+
+        # If all params are path params, no validation needed
+        if body_param is None:
+            return f(*args, **kwargs)
+
+        # Check that the body parameter has a BaseModel annotation
+        if body_model_class is inspect.Parameter.empty:
+            raise TypeError(
+                f"Function {f.__name__}'s body parameter '{body_param.name}' "
+                "lacks a type annotation. Expected a Pydantic BaseModel subclass."
+            )
+
+        if not (isinstance(body_model_class, type) and issubclass(body_model_class, BaseModel)):
+            raise TypeError(
+                f"Type annotation for '{body_param.name}' must be a Pydantic BaseModel subclass, "
+                f"got {body_model_class!r}"
+            )
+
+        # Validate request body
         if request.json is None:
             raise MGValidationError(
                 "Request body is required but was not provided.",
                 {
-                    "expected": model_class.__name__,
+                    "expected": body_model_class.__name__,
                     "received": None,
-                    "schema": model_class.model_json_schema()
+                    "schema": body_model_class.model_json_schema()
                 }
             )
 
         try:
-            validated_data = model_class(**request.json)
+            validated_data = body_model_class(**request.json)
         except ValidationError as e:
             # Provide detailed, helpful error messages
             errors = e.errors()
@@ -1067,34 +1103,41 @@ def validate_request(f):
                 })
 
             raise MGValidationError(
-                f"Request validation failed for {model_class.__name__}. "
+                f"Request validation failed for {body_model_class.__name__}. "
                 f"See details for specific fields.",
                 {
-                    "model": model_class.__name__,
+                    "model": body_model_class.__name__,
                     "errors": error_details,
                     "received": request.json,
                 }
             )
 
-        # Inject validated data as first parameter
-        return f(validated_data, *args, **kwargs)
+        # Inject validated data as the body parameter
+        # Path parameters are already in kwargs from Flask
+        kwargs[body_param.name] = validated_data
+        return f(*args, **kwargs)
 
     return wrapper
 ```
 
-**Tests**: `tests/api/test_validation.py`
+**Tests**: `tests/api/test_validation.py` (12 tests)
 - Test validates valid request body
-- Test raises MGValidationError for invalid body
+- Test validates with optional field omitted
+- Test raises MGValidationError for missing required field
 - Test error details include field, message, expected_type
+- Test raises clear error when body is empty JSON
 - Test passes through path parameters unchanged
-- Test raises clear error when body is None
+- Test path param with body (combined case)
 - Test raises TypeError when function has no parameters
 - Test raises TypeError when first parameter lacks annotation
-- Test raises TypeError when annotation is not BaseModel
+- Test raises TypeError for body param without BaseModel
+- Test validation error includes received data
+- Test wrong type returns clear error
 
 **Verification**:
-- All validation tests pass
-- Decorator not integrated yet
+- All 238 tests pass (12 new + 226 existing)
+- Decorator handles routes with both path params and body params
+- Decorator ready for integration in Step 9
 
 ---
 
