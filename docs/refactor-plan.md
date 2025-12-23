@@ -1,6 +1,6 @@
 # Refactor Plan: MemoGarden Core Architecture
 
-**Status**: In Progress - Step 5 Next (Transaction Operations Module)
+**Status**: In Progress - Step 6 Next (Core API)
 **Created**: 2025-12-23
 **Based on**: [refactor-proposal.md](./refactor-proposal.md) v1.3
 
@@ -506,11 +506,20 @@ class EntityOperations:
 
 ---
 
-## Step 5: Create db/transaction.py with TransactionOperations Class
+## Step 5: Create db/transaction.py with TransactionOperations Class ✅ COMPLETED
 
 **Goal**: Implement transaction operations using query builders.
 
 **Session Scope**: Create TransactionOperations class with tests.
+
+**Status**: ✅ Completed 2025-12-23
+- Created `db/transaction.py` with `TransactionOperations` class
+- Methods: `get_by_id()`, `create()`, `list()`, `update()`
+- Created `tests/db/test_transaction.py` with 23 comprehensive tests
+- All 196 tests pass (23 new + 173 existing)
+- Uses query builders from `db/query.py`
+- Uses centralized utils (`isodatetime.to_datestring()`)
+- Handles `include_superseded` flag with special-case SQL fragment
 
 **Note**: TransactionOperations uses composition - it delegates to EntityOperations
 via `core.entity` when needed (e.g., for supersede operations). It does NOT inherit
