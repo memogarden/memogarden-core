@@ -2,32 +2,45 @@
 
 IMPORT CONVENTION:
 - Core accesses these through core.transaction property
-- Delegates to core.entity for registry-level operations
+- Receives Core reference for coordinating entity registry operations
+
+ID GENERATION POLICY:
+All transaction IDs are auto-generated via entity.create(). This design:
+1. Prevents users from accidentally passing invalid or duplicate IDs
+2. Ensures entity registry entry is always created with transaction
+3. Encapsulates ID generation logic within the database layer
+4. Simplifies the API - users call core.transaction.create() without managing IDs
 """
 
 import sqlite3
 from datetime import date
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from . import query
 from ..utils import isodatetime
 from ..exceptions import ResourceNotFound
 
+if TYPE_CHECKING:
+    from . import Core
+
 
 class TransactionOperations:
     """Transaction operations.
 
-    Uses composition with EntityOperations - delegates registry-level
-    operations through core.entity when needed.
+    Coordinates with EntityOperations through Core reference.
+    Automatically creates entity registry entries via core.entity.create().
     """
 
-    def __init__(self, conn: sqlite3.Connection):
-        """Initialize transaction operations with a database connection.
+    def __init__(self, conn: sqlite3.Connection, core: "Core | None" = None):
+        """Initialize transaction operations.
 
         Args:
             conn: SQLite connection with row_factory set to sqlite3.Row
+            core: Core reference for coordinating entity registry operations.
+                  Required for create() to auto-generate entity IDs.
         """
         self._conn = conn
+        self._core = core
 
     def get_by_id(self, transaction_id: str) -> sqlite3.Row:
         """Get transaction by ID.
@@ -56,7 +69,6 @@ class TransactionOperations:
 
     def create(
         self,
-        transaction_id: str,
         amount: float,
         transaction_date: date,
         description: str,
@@ -64,14 +76,13 @@ class TransactionOperations:
         category: str | None = None,
         notes: str | None = None,
         author: str = "system"
-    ) -> None:
-        """Create a transaction.
+    ) -> str:
+        """Create a transaction with automatic entity registry creation.
 
-        Note: Entity registry entry must be created BEFORE calling this method.
-        Use core.entity.create() to create the registry entry first.
+        Creates both the entity registry entry and transaction record.
+        The transaction ID is auto-generated via core.entity.create().
 
         Args:
-            transaction_id: UUID of the transaction (must exist in entity table)
             amount: Transaction amount
             transaction_date: Date of the transaction
             description: Short description/title
@@ -79,7 +90,23 @@ class TransactionOperations:
             category: Optional category label
             notes: Optional detailed notes
             author: Creator identifier (default: "system")
+
+        Returns:
+            The auto-generated transaction ID (UUID v4 string)
+
+        Raises:
+            ValueError: If TransactionOperations initialized without Core reference
+            sqlite3.IntegrityError: If generated UUID already exists (extremely rare)
         """
+        if self._core is None:
+            raise ValueError(
+                "TransactionOperations requires Core reference for create(). "
+                "Use core.transaction.create() instead of standalone TransactionOperations."
+            )
+
+        # Create entity registry entry (auto-generates UUID)
+        transaction_id = self._core.entity.create("transactions")
+
         date_str = isodatetime.to_datestring(transaction_date)
 
         self._conn.execute(
@@ -88,6 +115,8 @@ class TransactionOperations:
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (transaction_id, amount, "SGD", date_str, description, account, category, author, notes)
         )
+
+        return transaction_id
 
     def list(
         self,

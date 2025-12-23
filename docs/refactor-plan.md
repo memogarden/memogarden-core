@@ -1,6 +1,6 @@
 # Refactor Plan: MemoGarden Core Architecture
 
-**Status**: In Progress - Step 6 Next (Core API)
+**Status**: In Progress - Step 7 Next (Migrate Route Handler)
 **Created**: 2025-12-23
 **Based on**: [refactor-proposal.md](./refactor-proposal.md) v1.3
 
@@ -678,11 +678,40 @@ class TransactionOperations:
 
 ---
 
-## Step 6: Create db/__init__.py with Core API
+## Step 6: Create db/__init__.py with Core API ✅ COMPLETED
 
 **Goal**: Implement Core-based database API with connection management.
 
 **Session Scope**: Create Core class and get_core() function, integrate EntityOperations and TransactionOperations.
+
+**Status**: ✅ Completed 2025-12-23
+- Created `db/__init__.py` with `Core` class and `get_core()` function
+- Core provides lazy-loaded `entity` and `transaction` properties
+- Implements atomic transaction support via context manager
+- `get_core(atomic=False)` returns Core with autocommit semantics
+- `get_core(atomic=True)` returns Core that MUST be used as context manager
+- Moved `init_db()` from `database.py` to `db/__init__.py`
+- Kept legacy `get_db()` and `close_db()` for Flask support during migration
+- Created `tests/db/test_core.py` with 28 comprehensive tests
+
+**Design Decision: Auto-Generated IDs (2025-12-23)**
+
+All entity IDs are now auto-generated UUIDs. This design:
+1. Prevents users from accidentally passing invalid or duplicate IDs
+2. Encapsulates ID generation logic within the database layer
+3. Ensures UUID v4 format compliance with collision retry (3 attempts)
+4. Simplifies the API - users don't need to manage ID creation
+
+**API Changes:**
+- `EntityOperations.create(entity_type, group_id, derived_from)` - No `entity_id` parameter
+- `TransactionOperations.create(amount, transaction_date, ...)` - No `transaction_id` parameter
+- Both methods now require Core reference for coordinated entity creation
+- Collision retry logic in EntityOperations.create() handles rare UUID duplicates
+
+**Test Updates:**
+- Removed tests for custom ID usage (no longer supported)
+- All tests updated to use auto-generated IDs
+- All 226 tests passing
 
 ### 6.1 Create db/__init__.py
 

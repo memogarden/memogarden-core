@@ -6,6 +6,13 @@ in the system.
 IMPORT CONVENTION:
 - Core accesses these through core.entity property
 - NO direct import needed when using Core API
+
+ID GENERATION POLICY:
+All entity IDs are auto-generated UUIDs. This design choice:
+1. Prevents users from accidentally passing invalid or duplicate IDs
+2. Encapsulates ID generation logic within the database layer
+3. Ensures UUID v4 format compliance
+4. Simplifies the API - users don't need to manage ID creation
 """
 
 import sqlite3
@@ -31,33 +38,42 @@ class EntityOperations:
     def create(
         self,
         entity_type: str,
-        entity_id: str | None = None,
         group_id: str | None = None,
         derived_from: str | None = None
     ) -> str:
-        """Create entity in global registry.
+        """Create entity in global registry with auto-generated UUID.
 
         Args:
             entity_type: The type of entity (e.g., 'transactions', 'recurrences')
-            entity_id: Optional UUID. If not provided, generates a new UUID.
             group_id: Optional group ID for clustering related entities
             derived_from: Optional ID of source entity for provenance tracking
 
         Returns:
-            The entity ID (generated or provided)
+            The auto-generated entity ID (UUID v4 string)
+
+        Raises:
+            sqlite3.IntegrityError: If generated UUID already exists (extremely rare)
         """
-        if entity_id is None:
+        # Generate UUID with collision retry
+        max_retries = 3
+        for attempt in range(max_retries):
             entity_id = uid.generate_uuid()
 
-        now = isodatetime.now()
+            try:
+                now = isodatetime.now()
+                self._conn.execute(
+                    """INSERT INTO entity (id, type, group_id, derived_from, created_at, updated_at)
+                       VALUES (?, ?, ?, ?, ?, ?)""",
+                    (entity_id, entity_type, group_id, derived_from, now, now)
+                )
+                return entity_id
+            except sqlite3.IntegrityError:
+                # UUID collision - retry with new UUID
+                if attempt == max_retries - 1:
+                    raise
 
-        self._conn.execute(
-            """INSERT INTO entity (id, type, group_id, derived_from, created_at, updated_at)
-               VALUES (?, ?, ?, ?, ?, ?)""",
-            (entity_id, entity_type, group_id, derived_from, now, now)
-        )
-
-        return entity_id
+        # Should never reach here
+        raise RuntimeError("Failed to generate unique UUID after retries")
 
     def get_by_id(
         self,
