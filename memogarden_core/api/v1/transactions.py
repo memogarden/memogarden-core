@@ -19,10 +19,10 @@ Architecture Notes:
 from flask import Blueprint, request, jsonify
 from pydantic import ValidationError
 
-from ...database import get_db, create_entity
 from ...schemas.transaction import TransactionCreate, TransactionUpdate, TransactionResponse
 from ...exceptions import ResourceNotFound, ValidationError as MGValidationError
-from ...utils import isodatetime, uid
+from ...utils import isodatetime
+from ...db import get_core, get_db
 
 
 # Create Blueprint
@@ -59,7 +59,7 @@ def _row_to_transaction_response(row) -> dict:
     }
 
 
-@transactions_bp.route("", methods=["POST"])
+@transactions_bp.post("")
 def create_transaction():
     """
     Create a new transaction.
@@ -77,48 +77,72 @@ def create_transaction():
         201: TransactionResponse with created transaction
         400: Validation error
     """
-    db = get_db()
-
+    # ============================================================================
+    # NEW: Core API Implementation
+    # ============================================================================
     try:
         # Validate request body
         data = TransactionCreate(**request.json)
     except ValidationError as e:
         raise MGValidationError("Invalid request data", {"errors": e.errors()})
 
-    # Generate UUID and create entity in registry
-    entity_id = uid.generate_uuid()
-    create_entity(db, "transactions", entity_id)
-
-    # Format date as ISO 8601 date string
-    transaction_date_str = isodatetime.to_datestring(data.transaction_date)
-
-    # Insert transaction
-    db.execute(
-        """INSERT INTO transactions (
-            id, amount, currency, transaction_date, description,
-            account, category, author, notes
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        (
-            entity_id,
-            data.amount,
-            data.currency,
-            transaction_date_str,
-            data.description,
-            data.account,
-            data.category,
-            "system",  # Will be replaced with auth context in Step 2
-            data.notes,
+    # Use atomic transaction for coordinated entity + transaction creation
+    with get_core(atomic=True) as core:
+        transaction_id = core.transaction.create(
+            amount=data.amount,
+            transaction_date=data.transaction_date,
+            description=data.description,
+            account=data.account,
+            category=data.category,
+            notes=data.notes
         )
-    )
-    db.commit()
+    # Context commits atomically - both entity and transaction created together
 
-    # Fetch created transaction with entity metadata
-    row = db.execute(
-        "SELECT * FROM transactions_view WHERE id = ?",
-        (entity_id,)
-    ).fetchone()
+    # Fetch created transaction with fresh Core (connection closed after atomic block)
+    core = get_core()
+    row = core.transaction.get_by_id(transaction_id)
 
     return jsonify(_row_to_transaction_response(row)), 201
+
+    # ============================================================================
+    # LEGACY: Old implementation (kept for reference during migration)
+    # ============================================================================
+    # db = get_db()
+    # try:
+    #     data = TransactionCreate(**request.json)
+    # except ValidationError as e:
+    #     raise MGValidationError("Invalid request data", {"errors": e.errors()})
+    #
+    # entity_id = uid.generate_uuid()
+    # create_entity(db, "transactions", entity_id)
+    #
+    # transaction_date_str = isodatetime.to_datestring(data.transaction_date)
+    #
+    # db.execute(
+    #     """INSERT INTO transactions (
+    #         id, amount, currency, transaction_date, description,
+    #         account, category, author, notes
+    #     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+    #     (
+    #         entity_id,
+    #         data.amount,
+    #         data.currency,
+    #         transaction_date_str,
+    #         data.description,
+    #         data.account,
+    #         data.category,
+    #         "system",
+    #         data.notes,
+    #     )
+    # )
+    # db.commit()
+    #
+    # row = db.execute(
+    #     "SELECT * FROM transactions_view WHERE id = ?",
+    #     (entity_id,)
+    # ).fetchone()
+    #
+    # return jsonify(_row_to_transaction_response(row)), 201
 
 
 @transactions_bp.route("<transaction_id>", methods=["GET"])

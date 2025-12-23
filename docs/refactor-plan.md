@@ -1,6 +1,6 @@
 # Refactor Plan: MemoGarden Core Architecture
 
-**Status**: In Progress - Step 7 Next (Migrate Route Handler)
+**Status**: In Progress - Step 8 Next (Create Validation Decorator)
 **Created**: 2025-12-23
 **Based on**: [refactor-proposal.md](./refactor-proposal.md) v1.3
 
@@ -890,11 +890,19 @@ def init_db():
 
 ---
 
-## Step 7: Migrate Route Handler to Use Core API
+## Step 7: Migrate Route Handler to Use Core API ✅ COMPLETED
 
 **Goal**: Update one route handler to use new Core API as proof of concept.
 
 **Session Scope**: Migrate POST /transactions endpoint to Core API.
+
+**Status**: ✅ Completed 2025-12-23
+- Migrated POST /transactions endpoint to use `get_core(atomic=True)` context manager
+- Uses `core.transaction.create()` which auto-generates entity ID and creates coordinated entity + transaction
+- Old implementation kept as comment for reference
+- Updated imports: removed `uid`, `create_entity`; added `get_core`
+- All 226 tests pass
+- POST endpoint now uses atomic Core API for coordinated entity creation
 
 ### 7.1 Update POST /transactions Handler
 
