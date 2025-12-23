@@ -104,13 +104,13 @@ def health():
     return jsonify({"status": "ok"})
 
 
-# API blueprints will be registered here in Step 1.5
-# Example:
-# from .api.v1.transactions import transactions_bp
-# app.register_blueprint(
-#     transactions_bp,
-#     url_prefix=f"{settings.api_v1_prefix}/transactions"
-# )
+# Register API blueprints
+from .api.v1.transactions import transactions_bp
+
+app.register_blueprint(
+    transactions_bp,
+    url_prefix=f"{settings.api_v1_prefix}/transactions"
+)
 
 
 if __name__ == "__main__":
