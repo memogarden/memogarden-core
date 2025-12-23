@@ -1,6 +1,6 @@
 # Refactor Plan: MemoGarden Core Architecture
 
-**Status**: In Progress - Step 9 Next (Apply @validate_request to POST /transactions)
+**Status**: In Progress - Step 15 Next (Move schemas to api/v1/schemas/)
 **Created**: 2025-12-23
 **Based on**: [refactor-proposal.md](./refactor-proposal.md) v1.3
 
@@ -1141,11 +1141,19 @@ def validate_request(f):
 
 ---
 
-## Step 9: Apply @validate_request to POST /transactions
+## Step 9: Apply @validate_request to POST /transactions ✅ COMPLETED
 
 **Goal**: Apply validation decorator to migrated route handler.
 
 **Session Scope**: Integrate @validate_request with POST /transactions.
+
+**Status**: ✅ Completed 2025-12-24
+- Applied `@validate_request` decorator to POST /transactions endpoint
+- Removed manual try-except ValidationError block from create_transaction
+- Added type annotation `data: TransactionCreate` parameter
+- Import ValidationError kept for PUT endpoint (still uses manual validation)
+- All 238 tests pass
+- Decorator successfully validates request body and returns detailed errors
 
 ### 9.1 Update POST /transactions Handler
 
@@ -1203,11 +1211,17 @@ def create_transaction(data: TransactionCreate):
 
 ---
 
-## Step 10: Migrate GET /transactions/<uuid> to Core API
+## Step 10: Migrate GET /transactions/<uuid> to Core API ✅ COMPLETED
 
 **Goal**: Migrate GET single transaction endpoint.
 
 **Session Scope**: Update GET /transactions/<uuid> to use Core API.
+
+**Status**: ✅ Completed 2025-12-24
+- Changed `.route("<transaction_id>", methods=["GET"])` to `.get("/<transaction_id>")`
+- Replaced manual SQL query with `core.transaction.get_by_id()`
+- Removed manual ResourceNotFound check (handled by TransactionOperations)
+- All 238 tests pass
 
 ### 10.1 Update GET /transactions/<uuid> Handler
 
@@ -1255,11 +1269,18 @@ def get_transaction(uuid: str):
 
 ---
 
-## Step 11: Migrate GET /transactions (list) to Core API
+## Step 11: Migrate GET /transactions (list) to Core API ✅ COMPLETED
 
 **Goal**: Migrate list transactions endpoint.
 
 **Session Scope**: Update GET /transactions to use Core API.
+
+**Status**: ✅ Completed 2025-12-24
+- Changed `.route("", methods=["GET"])` to `.get("")`
+- Replaced manual WHERE clause building with `core.transaction.list()`
+- Uses query builders from `db/query.py` (via TransactionOperations)
+- Simplified response using `_row_to_transaction_response()` helper
+- All 238 tests pass
 
 ### 11.1 Update GET /transactions Handler
 
@@ -1317,11 +1338,19 @@ def list_transactions():
 
 ---
 
-## Step 12: Migrate PUT /transactions/<uuid> to Core API
+## Step 12: Migrate PUT /transactions/<uuid> to Core API ✅ COMPLETED
 
 **Goal**: Migrate update transaction endpoint with validation and query builder.
 
 **Session Scope**: Update PUT endpoint with @validate_request and Core API.
+
+**Status**: ✅ Completed 2025-12-24
+- Changed `.route("<transaction_id>", methods=["PUT"])` to `.put("/<transaction_id>")`
+- Applied `@validate_request` decorator with `data: TransactionUpdate` parameter
+- Replaced manual field-by-field UPDATE logic with `core.transaction.update()`
+- Uses `model_dump(exclude_unset=True)` for partial update pattern
+- Removed manual try-except ValidationError block
+- All 238 tests pass
 
 ### 12.1 Update PUT /transactions/<uuid> Handler
 
@@ -1372,11 +1401,19 @@ def update_transaction(uuid: str, data: TransactionUpdate):
 
 ---
 
-## Step 13: Migrate DELETE /transactions/<uuid> to Core API
+## Step 13: Migrate DELETE /transactions/<uuid> to Core API ✅ COMPLETED
 
 **Goal**: Migrate delete transaction endpoint.
 
 **Session Scope**: Update DELETE endpoint to use Core API.
+
+**Status**: ✅ Completed 2025-12-24
+- Changed `.route("<transaction_id>", methods=["DELETE"])` to `.delete("/<transaction_id>")`
+- Changed from hard delete to soft delete via superseding
+- Uses atomic Core API: `core.entity.supersede(old_id, tombstone_id)`
+- Creates tombstone entity for provenance tracking
+- Updated DELETE test to verify soft delete behavior (superseded_by set, excluded from default list)
+- All 238 tests pass
 
 ### 13.1 Update DELETE /transactions/<uuid> Handler
 
@@ -1432,11 +1469,18 @@ def delete_transaction(uuid: str):
 
 ---
 
-## Step 14: Update Route Syntax to Flask .get(), .post(), etc.
+## Step 14: Update Route Syntax to Flask .get(), .post(), etc. ✅ COMPLETED
 
 **Goal**: Standardize route declaration style across all endpoints.
 
 **Session Scope**: Update all remaining route declarations.
+
+**Status**: ✅ Completed 2025-12-24
+- Updated all routes to use method-specific decorators
+- `/accounts` endpoint: `.route("accounts", methods=["GET"])` → `.get("/accounts")`
+- `/categories` endpoint: `.route("categories", methods=["GET"])` → `.get("/categories")`
+- All routes now use modern Flask syntax (.get(), .post(), .put(), .delete())
+- All 238 tests pass
 
 ### 14.1 Update All Route Declarations
 

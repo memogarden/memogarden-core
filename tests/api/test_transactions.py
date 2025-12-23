@@ -364,7 +364,7 @@ class TestDeleteTransaction:
     """Tests for DELETE /api/v1/transactions/{id}"""
 
     def test_delete_transaction(self, client):
-        """Test deleting a transaction."""
+        """Test deleting a transaction (soft delete via superseding)."""
         # Create a transaction to delete
         create_response = client.post(
             "/api/v1/transactions",
@@ -376,14 +376,27 @@ class TestDeleteTransaction:
         )
         transaction_id = create_response.get_json()["id"]
 
-        # Delete it
+        # Delete it (soft delete via superseding)
         response = client.delete(f"/api/v1/transactions/{transaction_id}")
         assert response.status_code == 204
         assert response.data == b""
 
-        # Verify it's deleted
+        # Verify transaction still exists but is marked as superseded
         get_response = client.get(f"/api/v1/transactions/{transaction_id}")
-        assert get_response.status_code == 404
+        assert get_response.status_code == 200
+        data = get_response.get_json()
+        assert data["superseded_by"] is not None
+        assert data["superseded_at"] is not None
+
+        # Verify it doesn't appear in default list (excludes superseded)
+        list_response = client.get("/api/v1/transactions")
+        list_data = list_response.get_json()
+        assert not any(tx["id"] == transaction_id for tx in list_data)
+
+        # Verify it appears when include_superseded=true
+        list_with_superseded = client.get("/api/v1/transactions?include_superseded=true")
+        list_data_with = list_with_superseded.get_json()
+        assert any(tx["id"] == transaction_id for tx in list_data_with)
 
     def test_delete_transaction_not_found(self, client):
         """Test deleting non-existent transaction."""

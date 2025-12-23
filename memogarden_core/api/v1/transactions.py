@@ -23,6 +23,7 @@ from ...schemas.transaction import TransactionCreate, TransactionUpdate, Transac
 from ...exceptions import ResourceNotFound, ValidationError as MGValidationError
 from ...utils import isodatetime
 from ...db import get_core, get_db
+from ..validation import validate_request
 
 
 # Create Blueprint
@@ -60,7 +61,8 @@ def _row_to_transaction_response(row) -> dict:
 
 
 @transactions_bp.post("")
-def create_transaction():
+@validate_request
+def create_transaction(data: TransactionCreate):
     """
     Create a new transaction.
 
@@ -78,14 +80,8 @@ def create_transaction():
         400: Validation error
     """
     # ============================================================================
-    # NEW: Core API Implementation
+    # NEW: Core API Implementation with @validate_request decorator
     # ============================================================================
-    try:
-        # Validate request body
-        data = TransactionCreate(**request.json)
-    except ValidationError as e:
-        raise MGValidationError("Invalid request data", {"errors": e.errors()})
-
     # Use atomic transaction for coordinated entity + transaction creation
     with get_core(atomic=True) as core:
         transaction_id = core.transaction.create(
@@ -145,7 +141,7 @@ def create_transaction():
     # return jsonify(_row_to_transaction_response(row)), 201
 
 
-@transactions_bp.route("<transaction_id>", methods=["GET"])
+@transactions_bp.get("/<transaction_id>")
 def get_transaction(transaction_id: str):
     """
     Get a single transaction by ID.
@@ -157,23 +153,13 @@ def get_transaction(transaction_id: str):
         200: TransactionResponse
         404: Transaction not found
     """
-    db = get_db()
-
-    row = db.execute(
-        "SELECT * FROM transactions_view WHERE id = ?",
-        (transaction_id,)
-    ).fetchone()
-
-    if not row:
-        raise ResourceNotFound(
-            f"Transaction not found",
-            {"transaction_id": transaction_id}
-        )
+    core = get_core()
+    row = core.transaction.get_by_id(transaction_id)
 
     return jsonify(_row_to_transaction_response(row))
 
 
-@transactions_bp.route("", methods=["GET"])
+@transactions_bp.get("")
 def list_transactions():
     """
     List transactions with optional filtering.
@@ -190,8 +176,6 @@ def list_transactions():
     Returns:
         200: Array of TransactionResponse objects
     """
-    db = get_db()
-
     # Parse query parameters
     start_date = request.args.get("start_date")
     end_date = request.args.get("end_date")
@@ -201,72 +185,23 @@ def list_transactions():
     limit = int(request.args.get("limit", 100))
     offset = int(request.args.get("offset", 0))
 
-    # Build dynamic WHERE clause
-    conditions = []
-    params = []
+    filters = {
+        "account": account,
+        "category": category,
+        "start_date": start_date,
+        "end_date": end_date,
+        "include_superseded": include_superseded
+    }
 
-    if start_date:
-        conditions.append("t.transaction_date >= ?")
-        params.append(start_date)
+    core = get_core()
+    rows = core.transaction.list(filters, limit=limit, offset=offset)
 
-    if end_date:
-        conditions.append("t.transaction_date <= ?")
-        params.append(end_date)
-
-    if account:
-        conditions.append("t.account = ?")
-        params.append(account)
-
-    if category:
-        conditions.append("t.category = ?")
-        params.append(category)
-
-    if not include_superseded:
-        conditions.append("e.superseded_by IS NULL")
-
-    # Build base query
-    where_clause = " AND ".join(conditions) if conditions else "1=1"
-
-    query = f"""
-        SELECT t.*,
-               e.created_at, e.updated_at, e.superseded_by, e.superseded_at,
-               e.group_id, e.derived_from
-        FROM transactions t
-        JOIN entity e ON t.id = e.id
-        WHERE {where_clause}
-        ORDER BY t.transaction_date DESC, e.created_at DESC
-        LIMIT ? OFFSET ?
-    """
-
-    params.extend([limit, offset])
-
-    rows = db.execute(query, params).fetchall()
-
-    return jsonify([
-        {
-            "id": row["id"],
-            "amount": row["amount"],
-            "currency": row["currency"],
-            "transaction_date": row["transaction_date"],
-            "description": row["description"],
-            "account": row["account"],
-            "category": row["category"],
-            "notes": row["notes"],
-            "author": row["author"],
-            "recurrence_id": row["recurrence_id"],
-            "created_at": row["created_at"],
-            "updated_at": row["updated_at"],
-            "superseded_by": row["superseded_by"],
-            "superseded_at": row["superseded_at"],
-            "group_id": row["group_id"],
-            "derived_from": row["derived_from"],
-        }
-        for row in rows
-    ])
+    return jsonify([_row_to_transaction_response(row) for row in rows])
 
 
-@transactions_bp.route("<transaction_id>", methods=["PUT"])
-def update_transaction(transaction_id: str):
+@transactions_bp.put("/<transaction_id>")
+@validate_request
+def update_transaction(transaction_id: str, data: TransactionUpdate):
     """
     Update a transaction.
 
@@ -290,93 +225,29 @@ def update_transaction(transaction_id: str):
         404: Transaction not found
         400: Validation error
     """
-    db = get_db()
+    core = get_core()
 
-    # Check if transaction exists
-    row = db.execute(
-        "SELECT * FROM transactions_view WHERE id = ?",
-        (transaction_id,)
-    ).fetchone()
+    # Verify transaction exists
+    core.transaction.get_by_id(transaction_id)
 
-    if not row:
-        raise ResourceNotFound(
-            f"Transaction not found",
-            {"transaction_id": transaction_id}
-        )
+    # Build update data from only provided fields
+    update_data = data.model_dump(exclude_unset=True)
 
-    try:
-        # Validate request body (all fields optional)
-        data = TransactionUpdate(**request.json)
-    except ValidationError as e:
-        raise MGValidationError("Invalid request data", {"errors": e.errors()})
-
-    # Build UPDATE dynamically based on provided fields
-    update_fields = []
-    params = []
-
-    if data.amount is not None:
-        update_fields.append("amount = ?")
-        params.append(data.amount)
-
-    if data.currency is not None:
-        update_fields.append("currency = ?")
-        params.append(data.currency)
-
-    if data.transaction_date is not None:
-        update_fields.append("transaction_date = ?")
-        params.append(isodatetime.to_datestring(data.transaction_date))
-
-    if data.description is not None:
-        update_fields.append("description = ?")
-        params.append(data.description)
-
-    if data.account is not None:
-        update_fields.append("account = ?")
-        params.append(data.account)
-
-    if data.category is not None:
-        update_fields.append("category = ?")
-        params.append(data.category)
-
-    if data.notes is not None:
-        update_fields.append("notes = ?")
-        params.append(data.notes)
-
-    if update_fields:
-        # Add transaction_id to params
-        params.append(transaction_id)
-
-        # Update transaction
-        db.execute(
-            f"UPDATE transactions SET {', '.join(update_fields)} WHERE id = ?",
-            params
-        )
-
-        # Update entity registry updated_at
-        now = isodatetime.now()
-        db.execute(
-            "UPDATE entity SET updated_at = ? WHERE id = ?",
-            (now, transaction_id)
-        )
-
-        db.commit()
+    if update_data:
+        core.transaction.update(transaction_id, update_data)
 
     # Fetch updated transaction
-    row = db.execute(
-        "SELECT * FROM transactions_view WHERE id = ?",
-        (transaction_id,)
-    ).fetchone()
+    row = core.transaction.get_by_id(transaction_id)
 
     return jsonify(_row_to_transaction_response(row))
 
 
-@transactions_bp.route("<transaction_id>", methods=["DELETE"])
+@transactions_bp.delete("/<transaction_id>")
 def delete_transaction(transaction_id: str):
     """
-    Delete a transaction.
+    Delete a transaction (soft delete via superseding).
 
-    Hard delete - removes transaction from database.
-    CASCADE deletes from entity registry automatically.
+    Creates a tombstone entity and marks the original as superseded.
 
     Args:
         transaction_id: UUID of the transaction
@@ -385,31 +256,20 @@ def delete_transaction(transaction_id: str):
         204: No content (successful deletion)
         404: Transaction not found
     """
-    db = get_db()
+    with get_core(atomic=True) as core:
+        # Verify transaction exists
+        core.transaction.get_by_id(transaction_id)
 
-    # Check if transaction exists
-    row = db.execute(
-        "SELECT id FROM transactions WHERE id = ?",
-        (transaction_id,)
-    ).fetchone()
+        # Create tombstone entity
+        tombstone_id = core.entity.create("transactions")
 
-    if not row:
-        raise ResourceNotFound(
-            f"Transaction not found",
-            {"transaction_id": transaction_id}
-        )
-
-    # Delete transaction (entity registry CASCADE deletes automatically)
-    db.execute(
-        "DELETE FROM transactions WHERE id = ?",
-        (transaction_id,)
-    )
-    db.commit()
+        # Mark original as superseded
+        core.entity.supersede(transaction_id, tombstone_id)
 
     return "", 204
 
 
-@transactions_bp.route("accounts", methods=["GET"])
+@transactions_bp.get("/accounts")
 def list_accounts():
     """
     List distinct account labels.
@@ -429,7 +289,7 @@ def list_accounts():
     return jsonify([row["account"] for row in rows])
 
 
-@transactions_bp.route("categories", methods=["GET"])
+@transactions_bp.get("/categories")
 def list_categories():
     """
     List distinct category labels.
