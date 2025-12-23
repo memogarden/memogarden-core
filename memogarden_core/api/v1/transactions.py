@@ -16,14 +16,13 @@ Architecture Notes:
 - Parameterized queries to prevent SQL injection
 """
 
-from datetime import datetime, UTC
-from uuid import uuid4
 from flask import Blueprint, request, jsonify
 from pydantic import ValidationError
 
 from ...database import get_db, create_entity
 from ...schemas.transaction import TransactionCreate, TransactionUpdate, TransactionResponse
 from ...exceptions import ResourceNotFound, ValidationError as MGValidationError
+from ...utils import isodatetime, uid
 
 
 # Create Blueprint
@@ -87,11 +86,11 @@ def create_transaction():
         raise MGValidationError("Invalid request data", {"errors": e.errors()})
 
     # Generate UUID and create entity in registry
-    entity_id = str(uuid4())
+    entity_id = uid.generate_uuid()
     create_entity(db, "transactions", entity_id)
 
-    # Format date as ISO 8601
-    transaction_date_str = data.transaction_date.isoformat()
+    # Format date as ISO 8601 date string
+    transaction_date_str = isodatetime.to_datestring(data.transaction_date)
 
     # Insert transaction
     db.execute(
@@ -301,7 +300,7 @@ def update_transaction(transaction_id: str):
 
     if data.transaction_date is not None:
         update_fields.append("transaction_date = ?")
-        params.append(data.transaction_date.isoformat())
+        params.append(isodatetime.to_datestring(data.transaction_date))
 
     if data.description is not None:
         update_fields.append("description = ?")
@@ -330,7 +329,7 @@ def update_transaction(transaction_id: str):
         )
 
         # Update entity registry updated_at
-        now = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+        now = isodatetime.now()
         db.execute(
             "UPDATE entity SET updated_at = ? WHERE id = ?",
             (now, transaction_id)

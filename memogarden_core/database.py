@@ -2,10 +2,9 @@
 
 import sqlite3
 from pathlib import Path
-from uuid import uuid4
-from datetime import datetime, UTC
 from flask import g
 from .config import settings
+from .utils import isodatetime, uid
 
 
 def get_db() -> sqlite3.Connection:
@@ -97,9 +96,9 @@ def create_entity(db: sqlite3.Connection, entity_type: str, entity_id: str | Non
         Entity UUID (str)
     """
     if entity_id is None:
-        entity_id = str(uuid4())
+        entity_id = uid.generate_uuid()
 
-    now = datetime.now(UTC).isoformat().replace('+00:00', 'Z')
+    now = isodatetime.now()
 
     db.execute(
         """INSERT INTO entity (id, type, created_at, updated_at)
@@ -138,7 +137,7 @@ def supersede_entity(db: sqlite3.Connection, old_id: str, new_id: str) -> None:
         old_id: UUID of entity being superseded
         new_id: UUID of superseding entity
     """
-    now = datetime.now(UTC).isoformat().replace('+00:00', 'Z')
+    now = isodatetime.now()
 
     db.execute(
         """UPDATE entity

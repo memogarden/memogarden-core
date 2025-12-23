@@ -1,11 +1,11 @@
-"""ISO 8601 timestamp/datetime conversion utilities.
+"""ISO 8601 datetime/date conversion utilities.
 
-This module centralizes all transformations between Python datetime objects
-and ISO 8601 timestamp strings. All timestamp operations should use these
-functions to ensure consistency.
+This module centralizes all transformations between Python datetime/date objects
+and ISO 8601 strings. All date/time operations should use these functions
+to ensure consistency and make usage clear across the codebase.
 """
 
-from datetime import datetime, UTC
+from datetime import datetime, date, UTC
 
 
 def to_timestamp(dt: datetime) -> str:
@@ -23,3 +23,8 @@ def to_datetime(timestamp: str) -> datetime:
 def now() -> str:
     """Get current UTC timestamp as ISO 8601 string."""
     return to_timestamp(datetime.now(UTC))
+
+
+def to_datestring(d: date) -> str:
+    """Convert date to ISO 8601 date string (YYYY-MM-DD)."""
+    return d.isoformat()
