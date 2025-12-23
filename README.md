@@ -9,12 +9,13 @@ MemoGarden Core is the backend API for MemoGarden, a personal memory system for 
 ## Technology Stack
 
 - **Language**: Python 3.13
-- **Framework**: FastAPI (async/await)
+- **Framework**: Flask (synchronous)
 - **Database**: SQLite (no ORM - raw SQL only)
-- **Data Access**: aiosqlite for async operations
+- **Data Access**: Built-in sqlite3 module
 - **Validation**: Pydantic (API layer only, NOT as ORM)
-- **Testing**: pytest with pytest-asyncio
+- **Testing**: pytest with pytest-flask
 - **Package Manager**: Poetry with poetry-plugin-shell
+- **Production Server**: gunicorn
 
 ## Prerequisites
 
@@ -50,21 +51,21 @@ MemoGarden Core is the backend API for MemoGarden, a personal memory system for 
 ### Running the API server
 
 ```bash
-# Using Poetry script
-poetry run dev
+# Development mode with Flask
+poetry run flask --app memogarden_core.main run --debug
 
-# Or directly with uvicorn
-poetry run uvicorn memogarden_core.main:app --reload
+# Production mode with gunicorn
+poetry run gunicorn memogarden_core.main:app
 
 # Or in poetry shell
 poetry shell
-uvicorn memogarden_core.main:app --reload
+flask --app memogarden_core.main run --debug
 ```
 
 The API will be available at:
-- API: http://localhost:8000
-- Interactive API docs: http://localhost:8000/docs
-- Health check: http://localhost:8000/health
+- API: http://localhost:5000 (Flask default)
+- Health check: http://localhost:5000/health
+- API endpoints: http://localhost:5000/api/v1/...
 
 ### Running tests
 
@@ -85,32 +86,32 @@ poetry run pytest tests/api/test_transactions.py
 memogarden-core/
 ├── memogarden_core/
 │   ├── __init__.py
-│   ├── main.py              # FastAPI app
+│   ├── main.py              # Flask app
 │   ├── config.py            # Settings with pydantic-settings
-│   ├── database.py          # aiosqlite connection & helpers
+│   ├── database.py          # sqlite3 connection & entity helpers
 │   ├── db/
 │   │   ├── __init__.py
 │   │   ├── schema.sql       # SOURCE OF TRUTH for database
-│   │   └── migrations/      # Optional migration scripts
+│   │   ├── seed.py          # Seed data script
+│   │   └── migrations/      # Future migration scripts
 │   ├── schemas/             # Pydantic models (API validation only)
 │   │   ├── __init__.py
-│   │   ├── transaction.py
-│   │   ├── account.py
-│   │   └── category.py
+│   │   └── transaction.py   # TransactionCreate, Update, Response
 │   ├── api/
 │   │   ├── __init__.py
 │   │   └── v1/
 │   │       ├── __init__.py
-│   │       ├── transactions.py
-│   │       ├── accounts.py
-│   │       └── categories.py
+│   │       └── transactions.py  # (to be implemented)
 │   └── utils/
 │       └── __init__.py
 ├── tests/
 │   ├── __init__.py
 │   ├── conftest.py          # Test fixtures (use :memory: SQLite)
+│   ├── test_config.py       # Configuration tests
+│   ├── test_database.py     # Database & entity registry tests
+│   ├── test_schemas.py      # Pydantic schema validation tests
 │   └── api/
-│       └── test_transactions.py
+│       └── test_health.py   # Health endpoint tests
 ├── data/
 │   └── .gitignore           # Ignore *.db files
 ├── .env.example
@@ -123,9 +124,20 @@ memogarden-core/
 
 See [.env.example](.env.example) for all available configuration options.
 
-## API Documentation
+## Current Implementation Status
 
-Once the server is running, visit http://localhost:8000/docs for interactive API documentation powered by FastAPI's automatic OpenAPI generation.
+**Completed:**
+- ✅ Step 1.1: Project Setup & Structure
+- ✅ Step 1.2: SQLite Database Schema (with entity registry)
+- ✅ Step 1.3: Pydantic Schemas (API Validation)
+
+**Next:**
+- 🔄 Step 1.4: Flask Application & Configuration
+- ⏳ Step 1.5: API Endpoints Implementation
+- ⏳ Step 1.6: Testing Infrastructure
+- ⏳ Step 1.7: Documentation & Development Workflow
+
+See [plan/implementation.md](../plan/implementation.md) for detailed progress.
 
 ## Core Philosophy
 
