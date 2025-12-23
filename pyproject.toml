@@ -9,6 +9,7 @@ packages = [{include = "memogarden_core"}]
 [tool.poetry.dependencies]
 python = "^3.13"
 flask = "^3.0.0"
+flask-cors = "^5.0.0"
 gunicorn = "^21.2.0"
 pydantic = "^2.5.0"
 pydantic-settings = "^2.1.0"

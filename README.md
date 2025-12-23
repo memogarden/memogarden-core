@@ -86,9 +86,10 @@ poetry run pytest tests/api/test_transactions.py
 memogarden-core/
 ├── memogarden_core/
 │   ├── __init__.py
-│   ├── main.py              # Flask app
+│   ├── main.py              # Flask app with CORS, error handlers
 │   ├── config.py            # Settings with pydantic-settings
 │   ├── database.py          # sqlite3 connection & entity helpers
+│   ├── exceptions.py        # Custom exception classes
 │   ├── db/
 │   │   ├── __init__.py
 │   │   ├── schema.sql       # SOURCE OF TRUTH for database
@@ -110,6 +111,8 @@ memogarden-core/
 │   ├── test_config.py       # Configuration tests
 │   ├── test_database.py     # Database & entity registry tests
 │   ├── test_schemas.py      # Pydantic schema validation tests
+│   ├── test_app.py          # Flask app initialization tests
+│   ├── test_errors.py       # Error handling tests
 │   └── api/
 │       └── test_health.py   # Health endpoint tests
 ├── data/
@@ -130,14 +133,16 @@ See [.env.example](.env.example) for all available configuration options.
 - ✅ Step 1.1: Project Setup & Structure
 - ✅ Step 1.2: SQLite Database Schema (with entity registry)
 - ✅ Step 1.3: Pydantic Schemas (API Validation)
+- ✅ Step 1.4: Flask Application & Configuration
 
 **Next:**
-- 🔄 Step 1.4: Flask Application & Configuration
-- ⏳ Step 1.5: API Endpoints Implementation
+- 🔄 Step 1.5: Transaction CRUD API Endpoints
 - ⏳ Step 1.6: Testing Infrastructure
 - ⏳ Step 1.7: Documentation & Development Workflow
 
 See [plan/implementation.md](../plan/implementation.md) for detailed progress.
+
+**Test Coverage:** 73 tests passing (config, database, schemas, Flask app, error handling, health endpoints)
 
 ## Core Philosophy
 

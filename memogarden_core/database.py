@@ -4,50 +4,69 @@ import sqlite3
 from pathlib import Path
 from uuid import uuid4
 from datetime import datetime, UTC
+from flask import g
 from .config import settings
-
-
-_db_connection = None
 
 
 def get_db() -> sqlite3.Connection:
     """
-    Get database connection.
+    Get database connection for current request.
 
-    Returns connection to SQLite database.
+    Uses Flask's g object to store connection per request.
+    Connection is automatically closed at request end.
+
+    Returns:
+        SQLite database connection with Row factory.
     """
-    global _db_connection
-    if _db_connection is None:
+    if 'db' not in g:
         db_path = Path(settings.database_path)
         db_path.parent.mkdir(parents=True, exist_ok=True)
-        _db_connection = sqlite3.connect(str(db_path))
-        _db_connection.row_factory = sqlite3.Row
+
+        g.db = sqlite3.connect(str(db_path))
+        g.db.row_factory = sqlite3.Row
         # Enable foreign key constraints (required for SQLite)
-        _db_connection.execute("PRAGMA foreign_keys = ON")
-    return _db_connection
+        g.db.execute("PRAGMA foreign_keys = ON")
+
+    return g.db
+
+
+def close_db(e=None):
+    """
+    Close database connection at end of request.
+
+    Registered with Flask's teardown_appcontext to run automatically.
+    """
+    db = g.pop('db', None)
+    if db is not None:
+        db.close()
 
 
 def init_db():
-    """Initialize database by running schema.sql."""
-    schema_path = Path(__file__).parent / "db" / "schema.sql"
+    """
+    Initialize database by running schema.sql if not already initialized.
 
-    if schema_path.exists():
-        db_path = Path(settings.database_path)
-        db_path.parent.mkdir(parents=True, exist_ok=True)
+    For fresh databases: applies current schema from schema.sql.
+    For existing databases: skips initialization (migrations handled separately in Step 3+).
+    """
+    db_path = Path(settings.database_path)
+    db_path.parent.mkdir(parents=True, exist_ok=True)
 
-        with sqlite3.connect(str(db_path)) as db:
+    with sqlite3.connect(str(db_path)) as db:
+        # Check if database is already initialized
+        cursor = db.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='_schema_metadata'"
+        )
+        if cursor.fetchone():
+            # Database already initialized, skip
+            return
+
+        # Fresh database - apply current schema
+        schema_path = Path(__file__).parent / "db" / "schema.sql"
+        if schema_path.exists():
             with open(schema_path, "r") as f:
                 schema_sql = f.read()
             db.executescript(schema_sql)
             db.commit()
-
-
-def close_db():
-    """Close database connection."""
-    global _db_connection
-    if _db_connection:
-        _db_connection.close()
-        _db_connection = None
 
 
 def get_schema_version() -> str:
