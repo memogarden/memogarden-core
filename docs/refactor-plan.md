@@ -1,6 +1,6 @@
 # Refactor Plan: MemoGarden Core Architecture
 
-**Status**: In Progress - Step 4 Next (Entity Operations Module)
+**Status**: In Progress - Step 5 Next (Transaction Operations Module)
 **Created**: 2025-12-23
 **Based on**: [refactor-proposal.md](./refactor-proposal.md) v1.3
 
@@ -319,11 +319,20 @@ def build_update_clause(
 
 ---
 
-## Step 4: Create db/entity.py with EntityOperations Class
+## Step 4: Create db/entity.py with EntityOperations Class ✅ COMPLETED
 
 **Goal**: Implement entity registry operations using new utils.
 
 **Session Scope**: Create EntityOperations class, test with real database.
+
+**Status**: ✅ Completed 2025-12-23
+- Created `db/entity.py` with `EntityOperations` class
+- Methods: `create()`, `get_by_id()`, `supersede()`, `update_timestamp()`
+- Created `tests/db/test_entity.py` with 15 behavior-focused tests
+- All 173 tests pass (15 new + 158 existing)
+- No mocks used - tests use in-memory SQLite and verify observable behavior
+- Updated `AGENTS.md` with testing philosophy (no mocks, behavior-focused testing)
+- Uses centralized utils (`isodatetime.now()`, `uid.generate_uuid()`)
 
 **Architecture Decision: Composition Over Inheritance**
 
