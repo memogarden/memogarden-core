@@ -1,15 +1,15 @@
-"""FastAPI application entry point."""
+"""Flask application entry point."""
 
-from fastapi import FastAPI
+from flask import Flask, jsonify
 
-app = FastAPI(
-    title="MemoGarden Core",
-    description="Personal expenditure tracking API",
-    version="0.1.0"
-)
+app = Flask(__name__)
 
 
-@app.get("/health")
-async def health():
+@app.route("/health")
+def health():
     """Health check endpoint."""
-    return {"status": "ok"}
+    return jsonify({"status": "ok"})
+
+
+if __name__ == "__main__":
+    app.run(debug=True)

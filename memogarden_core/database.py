@@ -1,16 +1,16 @@
-"""Database connection layer using aiosqlite."""
+"""Database connection layer using sqlite3."""
 
-import aiosqlite
+import sqlite3
 from pathlib import Path
 from uuid import uuid4
-from datetime import datetime
+from datetime import datetime, UTC
 from .config import settings
 
 
 _db_connection = None
 
 
-async def get_db() -> aiosqlite.Connection:
+def get_db() -> sqlite3.Connection:
     """
     Get database connection.
 
@@ -20,12 +20,14 @@ async def get_db() -> aiosqlite.Connection:
     if _db_connection is None:
         db_path = Path(settings.database_path)
         db_path.parent.mkdir(parents=True, exist_ok=True)
-        _db_connection = await aiosqlite.connect(str(db_path))
-        _db_connection.row_factory = aiosqlite.Row
+        _db_connection = sqlite3.connect(str(db_path))
+        _db_connection.row_factory = sqlite3.Row
+        # Enable foreign key constraints (required for SQLite)
+        _db_connection.execute("PRAGMA foreign_keys = ON")
     return _db_connection
 
 
-async def init_db():
+def init_db():
     """Initialize database by running schema.sql."""
     schema_path = Path(__file__).parent / "db" / "schema.sql"
 
@@ -33,37 +35,37 @@ async def init_db():
         db_path = Path(settings.database_path)
         db_path.parent.mkdir(parents=True, exist_ok=True)
 
-        async with aiosqlite.connect(str(db_path)) as db:
+        with sqlite3.connect(str(db_path)) as db:
             with open(schema_path, "r") as f:
                 schema_sql = f.read()
-            await db.executescript(schema_sql)
-            await db.commit()
+            db.executescript(schema_sql)
+            db.commit()
 
 
-async def close_db():
+def close_db():
     """Close database connection."""
     global _db_connection
     if _db_connection:
-        await _db_connection.close()
+        _db_connection.close()
         _db_connection = None
 
 
-async def get_schema_version() -> str:
+def get_schema_version() -> str:
     """
     Get current schema version from _schema_metadata table.
 
     Returns:
         Schema version string (e.g., '20251223')
     """
-    db = await get_db()
-    cursor = await db.execute(
+    db = get_db()
+    cursor = db.execute(
         "SELECT value FROM _schema_metadata WHERE key = 'version'"
     )
-    row = await cursor.fetchone()
+    row = cursor.fetchone()
     return row[0] if row else "unknown"
 
 
-async def create_entity(db: aiosqlite.Connection, entity_type: str, entity_id: str | None = None) -> str:
+def create_entity(db: sqlite3.Connection, entity_type: str, entity_id: str | None = None) -> str:
     """
     Create entity in global registry.
 
@@ -78,9 +80,9 @@ async def create_entity(db: aiosqlite.Connection, entity_type: str, entity_id: s
     if entity_id is None:
         entity_id = str(uuid4())
 
-    now = datetime.utcnow().isoformat() + 'Z'
+    now = datetime.now(UTC).isoformat().replace('+00:00', 'Z')
 
-    await db.execute(
+    db.execute(
         """INSERT INTO entity (id, type, created_at, updated_at)
            VALUES (?, ?, ?, ?)""",
         (entity_id, entity_type, now, now)
@@ -89,7 +91,7 @@ async def create_entity(db: aiosqlite.Connection, entity_type: str, entity_id: s
     return entity_id
 
 
-async def get_entity_type(db: aiosqlite.Connection, entity_id: str) -> str | None:
+def get_entity_type(db: sqlite3.Connection, entity_id: str) -> str | None:
     """
     Lookup entity type from registry.
 
@@ -100,15 +102,15 @@ async def get_entity_type(db: aiosqlite.Connection, entity_id: str) -> str | Non
     Returns:
         Entity type string or None if not found
     """
-    cursor = await db.execute(
+    cursor = db.execute(
         "SELECT type FROM entity WHERE id = ?",
         (entity_id,)
     )
-    row = await cursor.fetchone()
+    row = cursor.fetchone()
     return row[0] if row else None
 
 
-async def supersede_entity(db: aiosqlite.Connection, old_id: str, new_id: str) -> None:
+def supersede_entity(db: sqlite3.Connection, old_id: str, new_id: str) -> None:
     """
     Mark entity as superseded by another entity.
 
@@ -117,9 +119,9 @@ async def supersede_entity(db: aiosqlite.Connection, old_id: str, new_id: str) -
         old_id: UUID of entity being superseded
         new_id: UUID of superseding entity
     """
-    now = datetime.utcnow().isoformat() + 'Z'
+    now = datetime.now(UTC).isoformat().replace('+00:00', 'Z')
 
-    await db.execute(
+    db.execute(
         """UPDATE entity
            SET superseded_by = ?, superseded_at = ?, updated_at = ?
            WHERE id = ?""",
