@@ -12,72 +12,77 @@ from memogarden_core.db import get_core
 @pytest.fixture(autouse=True)
 def setup_database(client):
     """Set up test database with sample data for each test."""
-    core = get_core()
+    # Use atomic mode to ensure connection is closed after setup
+    with get_core(atomic=True) as core:
+        # Create some test transactions - IDs are auto-generated
+        # Transaction 1
+        entity_id_1 = core.entity.create("transactions")
+        core._conn.execute(
+            """INSERT INTO transactions (
+                id, amount, currency, transaction_date, description,
+                account, category, author, notes
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (entity_id_1, -15.50, "SGD", "2025-12-23", "Coffee at Starbucks",
+             "Personal", "Food", "system", "Morning coffee")
+        )
 
-    # Create some test transactions - IDs are auto-generated
-    # Transaction 1
-    entity_id_1 = core.entity.create("transactions")
-    core._conn.execute(
-        """INSERT INTO transactions (
-            id, amount, currency, transaction_date, description,
-            account, category, author, notes
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        (entity_id_1, -15.50, "SGD", "2025-12-23", "Coffee at Starbucks",
-         "Personal", "Food", "system", "Morning coffee")
-    )
+        # Transaction 2
+        entity_id_2 = core.entity.create("transactions")
+        core._conn.execute(
+            """INSERT INTO transactions (
+                id, amount, currency, transaction_date, description,
+                account, category, author, notes
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (entity_id_2, -50.00, "SGD", "2025-12-22", "Grocery shopping",
+             "Household", "Food", "system", "Weekly groceries")
+        )
 
-    # Transaction 2
-    entity_id_2 = core.entity.create("transactions")
-    core._conn.execute(
-        """INSERT INTO transactions (
-            id, amount, currency, transaction_date, description,
-            account, category, author, notes
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        (entity_id_2, -50.00, "SGD", "2025-12-22", "Grocery shopping",
-         "Household", "Food", "system", "Weekly groceries")
-    )
+        # Transaction 3
+        entity_id_3 = core.entity.create("transactions")
+        core._conn.execute(
+            """INSERT INTO transactions (
+                id, amount, currency, transaction_date, description,
+                account, category, author, notes
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (entity_id_3, -25.00, "SGD", "2025-12-21", "Taxi to airport",
+             "Personal", "Transport", "system", "Airport ride")
+        )
 
-    # Transaction 3
-    entity_id_3 = core.entity.create("transactions")
-    core._conn.execute(
-        """INSERT INTO transactions (
-            id, amount, currency, transaction_date, description,
-            account, category, author, notes
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        (entity_id_3, -25.00, "SGD", "2025-12-21", "Taxi to airport",
-         "Personal", "Transport", "system", "Airport ride")
-    )
+        # Transaction 4 (no category)
+        entity_id_4 = core.entity.create("transactions")
+        core._conn.execute(
+            """INSERT INTO transactions (
+                id, amount, currency, transaction_date, description,
+                account, category, author, notes
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (entity_id_4, 1000.00, "SGD", "2025-12-20", "Salary deposit",
+             "Household", None, "system", "Monthly salary")
+        )
 
-    # Transaction 4 (no category)
-    entity_id_4 = core.entity.create("transactions")
-    core._conn.execute(
-        """INSERT INTO transactions (
-            id, amount, currency, transaction_date, description,
-            account, category, author, notes
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        (entity_id_4, 1000.00, "SGD", "2025-12-20", "Salary deposit",
-         "Household", None, "system", "Monthly salary")
-    )
+        # Transaction 5 (older date, for filtering tests)
+        entity_id_5 = core.entity.create("transactions")
+        core._conn.execute(
+            """INSERT INTO transactions (
+                id, amount, currency, transaction_date, description,
+                account, category, author, notes
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (entity_id_5, -8.00, "SGD", "2025-11-15", "Bus fare",
+             "Personal", "Transport", "system", "Monthly pass")
+        )
 
-    # Transaction 5 (older date, for filtering tests)
-    entity_id_5 = core.entity.create("transactions")
-    core._conn.execute(
-        """INSERT INTO transactions (
-            id, amount, currency, transaction_date, description,
-            account, category, author, notes
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        (entity_id_5, -8.00, "SGD", "2025-11-15", "Bus fare",
-         "Personal", "Transport", "system", "Monthly pass")
-    )
-
-    core._conn.commit()
+    # Connection is closed automatically here by context manager
 
     yield
 
-    # Cleanup
-    core._conn.execute("DELETE FROM transactions")
-    core._conn.execute("DELETE FROM entity")
-    core._conn.commit()
+    # Cleanup - use a new connection since the setup one is closed
+    try:
+        with get_core(atomic=True) as core:
+            core._conn.execute("DELETE FROM transactions")
+            core._conn.execute("DELETE FROM entity")
+    except sqlite3.OperationalError:
+        # Connection may be closed or locked during teardown
+        # This is fine - the test database will be cleaned up by the fixture
+        pass
 
 
 class TestCreateTransaction:

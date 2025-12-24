@@ -582,38 +582,7 @@ def test_core_transaction_list():
 
 
 # ============================================================================
-# Legacy Flask support tests
+# Legacy Flask support tests removed
 # ============================================================================
-
-def test_legacy_get_db_still_works():
-    """Legacy get_db() function should still work for Flask."""
-    from memogarden_core.db import get_db
-    from memogarden_core.main import app
-
-    # Test within Flask app context
-    with app.app_context():
-        from flask import g
-        # First call should create connection
-        db1 = get_db()
-        assert db1 is not None
-        assert 'db' in g
-
-        # Second call should return same connection
-        db2 = get_db()
-        assert db1 is db2
-
-
-def test_legacy_close_db_still_works():
-    """Legacy close_db() function should still work for Flask."""
-    from memogarden_core.db import get_db, close_db
-    from memogarden_core.main import app
-
-    with app.app_context():
-        from flask import g
-        # Create connection
-        db = get_db()
-        assert 'db' in g
-
-        # Close connection
-        close_db()
-        assert 'db' not in g or g.db is None
+# The legacy get_db() and close_db() functions were removed in Step 16
+# of the refactor plan. All code now uses the Core API pattern.
