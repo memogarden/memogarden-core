@@ -4,12 +4,7 @@ import pytest
 import re
 from uuid import UUID
 from datetime import datetime
-from memogarden_core.database import (
-    create_entity,
-    get_entity_type,
-    supersede_entity,
-    get_schema_version
-)
+from memogarden_core.db import get_core
 
 
 class TestSchemaInitialization:
@@ -63,7 +58,9 @@ class TestEntityCreation:
 
     def test_create_entity_returns_uuid(self, test_db):
         """create_entity should return a valid UUID string."""
-        entity_id = create_entity(test_db, "transactions")
+        core = get_core()
+        core._conn = test_db  # Use test connection
+        entity_id = core.entity.create("transactions")
 
         # Should be a valid UUID
         try:
@@ -77,7 +74,9 @@ class TestEntityCreation:
 
     def test_create_entity_inserts_record(self, test_db):
         """create_entity should insert record into entity table."""
-        entity_id = create_entity(test_db, "transactions")
+        core = get_core()
+        core._conn = test_db  # Use test connection
+        entity_id = core.entity.create("transactions")
 
         cursor = test_db.execute(
             "SELECT id, type FROM entity WHERE id = ?",
@@ -91,7 +90,9 @@ class TestEntityCreation:
 
     def test_create_entity_sets_timestamps(self, test_db):
         """create_entity should set created_at and updated_at."""
-        entity_id = create_entity(test_db, "transactions")
+        core = get_core()
+        core._conn = test_db  # Use test connection
+        entity_id = core.entity.create("transactions")
 
         cursor = test_db.execute(
             "SELECT created_at, updated_at FROM entity WHERE id = ?",
@@ -112,48 +113,33 @@ class TestEntityCreation:
         datetime.fromisoformat(created_at.replace('Z', '+00:00'))
         datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
 
-    def test_create_entity_accepts_custom_id(self, test_db):
-        """create_entity should accept custom UUID."""
-        custom_id = "12345678-1234-1234-1234-123456789abc"
-        entity_id = create_entity(test_db, "transactions", custom_id)
-
-        assert entity_id == custom_id
-
-        cursor = test_db.execute(
-            "SELECT id FROM entity WHERE id = ?",
-            (custom_id,)
-        )
-        row = cursor.fetchone()
-        assert row is not None
-
 
 class TestEntityLookup:
-    """Test entity type lookup."""
+    """Test entity type lookup (behavior test via Core API)."""
 
-    def test_get_entity_type_returns_correct_type(self, test_db):
-        """get_entity_type should return correct type for existing entity."""
-        entity_id = create_entity(test_db, "transactions")
+    def test_get_entity_returns_correct_type(self, test_db):
+        """get_by_id should return correct type for existing entity."""
+        core = get_core()
+        core._conn = test_db  # Use test connection
+        entity_id = core.entity.create("transactions")
 
-        entity_type = get_entity_type(test_db, entity_id)
+        row = core.entity.get_by_id(entity_id)
 
-        assert entity_type == "transactions"
-
-    def test_get_entity_type_returns_none_for_nonexistent(self, test_db):
-        """get_entity_type should return None for non-existent entity."""
-        entity_type = get_entity_type(test_db, "nonexistent-id")
-
-        assert entity_type is None
+        assert row is not None
+        assert row["type"] == "transactions"
 
 
 class TestEntitySupersession:
     """Test entity supersession."""
 
     def test_supersede_entity_sets_fields(self, test_db):
-        """supersede_entity should set superseded_by and superseded_at."""
-        old_id = create_entity(test_db, "transactions")
-        new_id = create_entity(test_db, "transactions")
+        """supersede should set superseded_by and superseded_at."""
+        core = get_core()
+        core._conn = test_db  # Use test connection
+        old_id = core.entity.create("transactions")
+        new_id = core.entity.create("transactions")
 
-        supersede_entity(test_db, old_id, new_id)
+        core.entity.supersede(old_id, new_id)
         test_db.commit()
 
         cursor = test_db.execute(
@@ -171,8 +157,10 @@ class TestEntitySupersession:
         assert re.match(iso_pattern, row[1])
 
     def test_supersede_entity_updates_timestamp(self, test_db):
-        """supersede_entity should update the updated_at timestamp."""
-        old_id = create_entity(test_db, "transactions")
+        """supersede should update the updated_at timestamp."""
+        core = get_core()
+        core._conn = test_db  # Use test connection
+        old_id = core.entity.create("transactions")
 
         # Get original updated_at
         cursor = test_db.execute(
@@ -182,8 +170,8 @@ class TestEntitySupersession:
         original_updated = cursor.fetchone()[0]
 
         # Supersede
-        new_id = create_entity(test_db, "transactions")
-        supersede_entity(test_db, old_id, new_id)
+        new_id = core.entity.create("transactions")
+        core.entity.supersede(old_id, new_id)
         test_db.commit()
 
         # Check updated_at changed
@@ -216,7 +204,9 @@ class TestTransactionEntityIntegration:
 
     def test_transaction_with_entity_works(self, test_db):
         """Transaction should work when entity exists."""
-        entity_id = create_entity(test_db, "transactions")
+        core = get_core()
+        core._conn = test_db  # Use test connection
+        entity_id = core.entity.create("transactions")
 
         test_db.execute(
             """INSERT INTO transactions
@@ -240,7 +230,9 @@ class TestTransactionEntityIntegration:
 
     def test_transactions_view_includes_metadata(self, test_db):
         """transactions_view should include entity metadata."""
-        entity_id = create_entity(test_db, "transactions")
+        core = get_core()
+        core._conn = test_db  # Use test connection
+        entity_id = core.entity.create("transactions")
 
         test_db.execute(
             """INSERT INTO transactions

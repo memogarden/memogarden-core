@@ -12,7 +12,7 @@ import pytest
 from datetime import date, datetime
 from pydantic import ValidationError
 
-from memogarden_core.schemas import (
+from memogarden_core.api.v1.schemas import (
     TransactionBase,
     TransactionCreate,
     TransactionUpdate,

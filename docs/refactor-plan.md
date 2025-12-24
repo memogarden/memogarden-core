@@ -1,6 +1,6 @@
 # Refactor Plan: MemoGarden Core Architecture
 
-**Status**: In Progress - Step 15 Next (Move schemas to api/v1/schemas/)
+**Status**: In Progress - Step 18 Next (Final Testing and Documentation Review)
 **Created**: 2025-12-23
 **Based on**: [refactor-proposal.md](./refactor-proposal.md) v1.3
 
@@ -1519,11 +1519,18 @@ def list_accounts():
 
 ---
 
-## Step 15: Move schemas to api/v1/schemas/
+## Step 15: Move schemas to api/v1/schemas/ ✅ COMPLETED
 
 **Goal**: Co-locate Pydantic schemas with API version they serve.
 
 **Session Scope**: Move schemas/ directory and update imports.
+
+**Status**: ✅ Completed 2025-12-24
+- Moved `memogarden_core/schemas/` → `memogarden_core/api/v1/schemas/`
+- Updated import in `api/v1/transactions.py` to use relative import
+- Updated import in `tests/test_schemas.py` to use new location
+- All 18 schema tests pass
+- API endpoint tests pass with new schema location
 
 ### 15.1 Move schemas Directory
 
@@ -1556,37 +1563,50 @@ from api.v1.schemas.transaction import TransactionCreate, TransactionUpdate, Tra
 
 ---
 
-## Step 16: Remove Dead Code and Legacy Functions
+## Step 16: Remove Dead Code and Legacy Functions ✅ COMPLETED
 
 **Goal**: Clean up deprecated code after successful migration.
 
 **Session Scope**: Remove legacy functions, update documentation.
 
+**Status**: ✅ Completed 2025-12-24
+- Migrated `/accounts` and `/categories` endpoints to use Core API
+- Removed legacy `get_db()` and `close_db()` from `db/__init__.py`
+- Updated `main.py` to import `init_db` from `db` module (removed `close_db` teardown)
+- Updated `db/seed.py` to use Core API (removed async/aiosqlite pattern)
+- Updated all test files to use Core API instead of `database.py`:
+  - `tests/test_database.py` - Updated to use Core API
+  - `tests/test_app.py` - Removed `TestDatabaseTeardown` class (tests for removed `close_db`)
+  - `tests/api/test_transactions.py` - Updated to use Core API
+- Deleted `memogarden_core/database.py` entirely
+- All tests pass (81+ tests passing)
+
 ### 16.1 Remove Legacy Database Functions
 
 **File**: `memogarden_core/db/__init__.py`
 
-**Remove**:
+**Removed**:
 - `get_db()` function
 - `close_db()` function
 
-**Note**: Only remove after verifying no code uses these functions.
-
 ### 16.2 Remove Old Helper Functions
 
-**File**: `memogarden_core/database.py` (or delete entirely)
+**File**: `memogarden_core/database.py` (DELETED)
 
-**Remove**:
+**Removed**:
 - `create_entity()` function
 - `supersede_entity()` function
 - `get_entity_type()` function
-- Any other duplicated code
+- `get_schema_version()` function
+- `init_db()` function (moved to `db/__init__.py`)
 
-### 16.3 Remove Manual Validation Blocks
+### 16.3 Update Imports
 
-All manual `try-except ValidationError` blocks should already be replaced with `@validate_request`.
-
-**Tests**: Full test suite
+**Files updated**:
+- `main.py`: `from .db import init_db` (removed `close_db`)
+- `db/seed.py`: `from memogarden_core.db import get_core, init_db`
+- `tests/test_database.py`: `from memogarden_core.db import get_core`
+- `tests/api/test_transactions.py`: `from memogarden_core.db import get_core`
 
 **Verification**:
 - All tests pass
@@ -1595,11 +1615,20 @@ All manual `try-except ValidationError` blocks should already be replaced with `
 
 ---
 
-## Step 17: Update AGENTS.md with New Conventions
+## Step 17: Update AGENTS.md with New Conventions ✅ COMPLETED
 
 **Goal**: Document new patterns for AI agents.
 
 **Session Scope**: Update AGENTS.md with Core API and utility conventions.
+
+**Status**: ✅ Completed 2025-12-24
+- Added "Database Operations" section with Core API pattern documentation
+- Added "Request Validation" section with @validate_request decorator documentation
+- Updated "Writing a New API Endpoint" section with Flask + Core API examples
+- Updated "Running the Core API Locally" (Flask instead of FastAPI/uvicorn)
+- Updated Technology Stack section (Core API + @validate_request)
+- Updated Current Status section (Steps 1-16 complete)
+- Updated date to 2025-12-24
 
 ### 17.1 Add New Sections to AGENTS.md
 

@@ -5,7 +5,7 @@ from flask import Flask, jsonify
 from flask_cors import CORS
 
 from .config import settings
-from .database import init_db, close_db
+from .db import init_db
 from .exceptions import ResourceNotFound, ValidationError, MemoGardenError
 
 # Configure logging
@@ -21,9 +21,6 @@ app = Flask(__name__)
 
 # CORS configuration
 CORS(app, origins=settings.cors_origins, supports_credentials=True)
-
-# Register database teardown handler
-app.teardown_appcontext(close_db)
 
 
 # Database initialization (runs once on app startup)

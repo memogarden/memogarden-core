@@ -50,25 +50,6 @@ class TestCORSConfiguration:
         assert response.status_code in (200, 204)
 
 
-class TestDatabaseTeardown:
-    """Test database connection teardown."""
-
-    def test_close_db_exists(self):
-        """close_db function should be importable."""
-        from memogarden_core.database import close_db
-        assert close_db is not None
-
-    def test_close_db_callable(self):
-        """close_db should be callable."""
-        from memogarden_core.database import close_db
-        assert callable(close_db)
-
-    def test_teardown_registered(self):
-        """Database teardown should be registered with app."""
-        # teardown_appcontext functions are stored in app.teardown_appcontext_funcs
-        assert len(app.teardown_appcontext_funcs) > 0
-
-
 class TestLoggingConfiguration:
     """Test logging configuration."""
 

@@ -6,88 +6,78 @@ from datetime import date, datetime, UTC
 from uuid import uuid4
 
 from memogarden_core.main import app
-from memogarden_core.database import create_entity
+from memogarden_core.db import get_core
 
 
 @pytest.fixture(autouse=True)
 def setup_database(client):
     """Set up test database with sample data for each test."""
-    with app.app_context():
-        from memogarden_core.database import get_db
-        db = get_db()
+    core = get_core()
 
-        # Create some test transactions
-        # Transaction 1
-        entity_id_1 = str(uuid4())
-        create_entity(db, "transactions", entity_id_1)
-        db.execute(
-            """INSERT INTO transactions (
-                id, amount, currency, transaction_date, description,
-                account, category, author, notes
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (entity_id_1, -15.50, "SGD", "2025-12-23", "Coffee at Starbucks",
-             "Personal", "Food", "system", "Morning coffee")
-        )
+    # Create some test transactions - IDs are auto-generated
+    # Transaction 1
+    entity_id_1 = core.entity.create("transactions")
+    core._conn.execute(
+        """INSERT INTO transactions (
+            id, amount, currency, transaction_date, description,
+            account, category, author, notes
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (entity_id_1, -15.50, "SGD", "2025-12-23", "Coffee at Starbucks",
+         "Personal", "Food", "system", "Morning coffee")
+    )
 
-        # Transaction 2
-        entity_id_2 = str(uuid4())
-        create_entity(db, "transactions", entity_id_2)
-        db.execute(
-            """INSERT INTO transactions (
-                id, amount, currency, transaction_date, description,
-                account, category, author, notes
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (entity_id_2, -50.00, "SGD", "2025-12-22", "Grocery shopping",
-             "Household", "Food", "system", "Weekly groceries")
-        )
+    # Transaction 2
+    entity_id_2 = core.entity.create("transactions")
+    core._conn.execute(
+        """INSERT INTO transactions (
+            id, amount, currency, transaction_date, description,
+            account, category, author, notes
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (entity_id_2, -50.00, "SGD", "2025-12-22", "Grocery shopping",
+         "Household", "Food", "system", "Weekly groceries")
+    )
 
-        # Transaction 3
-        entity_id_3 = str(uuid4())
-        create_entity(db, "transactions", entity_id_3)
-        db.execute(
-            """INSERT INTO transactions (
-                id, amount, currency, transaction_date, description,
-                account, category, author, notes
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (entity_id_3, -25.00, "SGD", "2025-12-21", "Taxi to airport",
-             "Personal", "Transport", "system", "Airport ride")
-        )
+    # Transaction 3
+    entity_id_3 = core.entity.create("transactions")
+    core._conn.execute(
+        """INSERT INTO transactions (
+            id, amount, currency, transaction_date, description,
+            account, category, author, notes
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (entity_id_3, -25.00, "SGD", "2025-12-21", "Taxi to airport",
+         "Personal", "Transport", "system", "Airport ride")
+    )
 
-        # Transaction 4 (no category)
-        entity_id_4 = str(uuid4())
-        create_entity(db, "transactions", entity_id_4)
-        db.execute(
-            """INSERT INTO transactions (
-                id, amount, currency, transaction_date, description,
-                account, category, author, notes
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (entity_id_4, 1000.00, "SGD", "2025-12-20", "Salary deposit",
-             "Household", None, "system", "Monthly salary")
-        )
+    # Transaction 4 (no category)
+    entity_id_4 = core.entity.create("transactions")
+    core._conn.execute(
+        """INSERT INTO transactions (
+            id, amount, currency, transaction_date, description,
+            account, category, author, notes
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (entity_id_4, 1000.00, "SGD", "2025-12-20", "Salary deposit",
+         "Household", None, "system", "Monthly salary")
+    )
 
-        # Transaction 5 (older date, for filtering tests)
-        entity_id_5 = str(uuid4())
-        create_entity(db, "transactions", entity_id_5)
-        db.execute(
-            """INSERT INTO transactions (
-                id, amount, currency, transaction_date, description,
-                account, category, author, notes
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (entity_id_5, -8.00, "SGD", "2025-11-15", "Bus fare",
-             "Personal", "Transport", "system", "Monthly pass")
-        )
+    # Transaction 5 (older date, for filtering tests)
+    entity_id_5 = core.entity.create("transactions")
+    core._conn.execute(
+        """INSERT INTO transactions (
+            id, amount, currency, transaction_date, description,
+            account, category, author, notes
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (entity_id_5, -8.00, "SGD", "2025-11-15", "Bus fare",
+         "Personal", "Transport", "system", "Monthly pass")
+    )
 
-        db.commit()
+    core._conn.commit()
 
     yield
 
     # Cleanup
-    with app.app_context():
-        from memogarden_core.database import get_db
-        db = get_db()
-        db.execute("DELETE FROM transactions")
-        db.execute("DELETE FROM entity")
-        db.commit()
+    core._conn.execute("DELETE FROM transactions")
+    core._conn.execute("DELETE FROM entity")
+    core._conn.commit()
 
 
 class TestCreateTransaction:
@@ -436,11 +426,10 @@ class TestLabelEndpoints:
     def test_list_labels_empty_database(self, client):
         """Test listing labels when no transactions exist."""
         # Clear all transactions
-        with app.app_context():
-            from memogarden_core.database import get_db
-            db = get_db()
-            db.execute("DELETE FROM transactions")
-            db.commit()
+        from memogarden_core.db import get_core
+        core = get_core()
+        core._conn.execute("DELETE FROM transactions")
+        core._conn.commit()
 
         # Should return empty arrays
         accounts_response = client.get("/api/v1/transactions/accounts")

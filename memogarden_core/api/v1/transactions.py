@@ -19,10 +19,10 @@ Architecture Notes:
 from flask import Blueprint, request, jsonify
 from pydantic import ValidationError
 
-from ...schemas.transaction import TransactionCreate, TransactionUpdate, TransactionResponse
+from .schemas.transaction import TransactionCreate, TransactionUpdate, TransactionResponse
 from ...exceptions import ResourceNotFound, ValidationError as MGValidationError
 from ...utils import isodatetime
-from ...db import get_core, get_db
+from ...db import get_core
 from ..validation import validate_request
 
 
@@ -280,9 +280,8 @@ def list_accounts():
     Returns:
         200: Array of account label strings
     """
-    db = get_db()
-
-    rows = db.execute(
+    core = get_core()
+    rows = core._conn.execute(
         "SELECT DISTINCT account FROM transactions WHERE account IS NOT NULL ORDER BY account"
     ).fetchall()
 
@@ -300,9 +299,8 @@ def list_categories():
     Returns:
         200: Array of category label strings
     """
-    db = get_db()
-
-    rows = db.execute(
+    core = get_core()
+    rows = core._conn.execute(
         "SELECT DISTINCT category FROM transactions WHERE category IS NOT NULL ORDER BY category"
     ).fetchall()
 

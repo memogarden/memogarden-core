@@ -199,37 +199,6 @@ def get_core(atomic: bool = False) -> Core:
 
 
 # ============================================================================
-# LEGACY FLASK SUPPORT (kept during migration)
-# ============================================================================
-
-def get_db() -> sqlite3.Connection:
-    """
-    Legacy Flask request-scoped connection.
-
-    DEPRECATED: Use get_core() instead.
-
-    This function is kept for backward compatibility during migration.
-    It uses Flask's g object to store connection per request.
-    """
-    from flask import g
-    if 'db' not in g:
-        g.db = _create_connection()
-    return g.db
-
-
-def close_db(e=None):
-    """Legacy Flask connection cleanup. DEPRECATED.
-
-    This function is kept for backward compatibility during migration.
-    It closes the database connection stored in Flask's g object.
-    """
-    from flask import g
-    db = g.pop('db', None)
-    if db is not None:
-        db.close()
-
-
-# ============================================================================
 # DATABASE INITIALIZATION
 # ============================================================================
 
