@@ -156,8 +156,12 @@ def _create_connection() -> sqlite3.Connection:
     """Create a fresh database connection.
 
     Returns:
-        SQLite connection with row_factory set to sqlite3.Row
-        and foreign keys enabled.
+        SQLite connection with row_factory set to sqlite3.Row,
+        foreign keys enabled, and WAL mode for concurrent access.
+
+    Note:
+        WAL (Write-Ahead Logging) mode allows better concurrent access
+        by enabling readers to proceed without blocking writers.
     """
     db_path = Path(settings.database_path)
     db_path.parent.mkdir(parents=True, exist_ok=True)
