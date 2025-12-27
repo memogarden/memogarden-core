@@ -50,6 +50,15 @@ MemoGarden Core is the backend API for MemoGarden, a personal memory system for 
 
 ### Running the API server
 
+**Using convenience scripts (from parent directory):**
+```bash
+# From /home/kureshii/memogarden/
+./scripts/run.sh              # Start development server
+./scripts/test.sh             # Run tests
+./scripts/test-coverage.sh    # Run tests with coverage
+```
+
+**Manual commands (from memogarden-core directory):**
 ```bash
 # Development mode with Flask
 poetry run flask --app memogarden_core.main run --debug
@@ -78,6 +87,139 @@ poetry run pytest --cov=memogarden_core
 
 # Run specific test file
 poetry run pytest tests/api/test_transactions.py
+
+# Run with verbose output
+poetry run pytest -v
+```
+
+**Test Coverage:** 231 tests passing, 90% coverage (exceeds 80% target)
+
+## API Endpoints
+
+### Health Check
+
+```bash
+curl http://localhost:5000/health
+```
+
+Response:
+```json
+{"status": "ok"}
+```
+
+### Transaction Endpoints
+
+#### Create Transaction
+
+```bash
+curl -X POST http://localhost:5000/api/v1/transactions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "amount": -15.50,
+    "currency": "SGD",
+    "transaction_date": "2025-12-27",
+    "description": "Coffee at Starbucks",
+    "account": "Personal",
+    "category": "Food"
+  }'
+```
+
+Response (201 Created):
+```json
+{
+  "id": "uuid-here",
+  "amount": -15.50,
+  "currency": "SGD",
+  "transaction_date": "2025-12-27",
+  "description": "Coffee at Starbucks",
+  "account": "Personal",
+  "category": "Food",
+  "author": "system",
+  "notes": null,
+  "recurrence_id": null,
+  "created_at": "2025-12-27T12:00:00Z",
+  "updated_at": "2025-12-27T12:00:00Z",
+  "superseded_by": null,
+  "group_id": null
+}
+```
+
+#### List Transactions
+
+```bash
+# List all transactions
+curl http://localhost:5000/api/v1/transactions
+
+# Filter by date range
+curl "http://localhost:5000/api/v1/transactions?start_date=2025-12-01&end_date=2025-12-31"
+
+# Filter by account
+curl "http://localhost:5000/api/v1/transactions?account=Personal"
+
+# Filter by category
+curl "http://localhost:5000/api/v1/transactions?category=Food"
+
+# Pagination
+curl "http://localhost:5000/api/v1/transactions?limit=10&offset=0"
+
+# Combined filters
+curl "http://localhost:5000/api/v1/transactions?account=Personal&category=Food&limit=5"
+```
+
+Response (200 OK):
+```json
+[
+  {
+    "id": "uuid-1",
+    "amount": -15.50,
+    "description": "Coffee at Starbucks",
+    "account": "Personal",
+    "category": "Food",
+    "transaction_date": "2025-12-27",
+    "created_at": "2025-12-27T12:00:00Z",
+    ...
+  }
+]
+```
+
+#### Get Single Transaction
+
+```bash
+curl http://localhost:5000/api/v1/transactions/{id}
+```
+
+Response (200 OK): Single transaction object, or 404 if not found.
+
+#### Update Transaction
+
+```bash
+curl -X PUT http://localhost:5000/api/v1/transactions/{id} \
+  -H "Content-Type: application/json" \
+  -d '{"amount": -16.00, "description": "Latte at Starbucks"}'
+```
+
+Response (200 OK): Updated transaction object.
+
+#### Delete Transaction
+
+```bash
+curl -X DELETE http://localhost:5000/api/v1/transactions/{id}
+```
+
+Response (204 No Content): Transaction deleted successfully.
+
+#### Label Utility Endpoints
+
+```bash
+# List all distinct account labels
+curl http://localhost:5000/api/v1/transactions/accounts
+
+# Response: ["Personal", "Household"]
+
+# List all distinct category labels
+curl http://localhost:5000/api/v1/transactions/categories
+
+# Response: ["Food", "Transport", "Shopping", "Entertainment"]
 ```
 
 ## Project Structure
@@ -88,36 +230,45 @@ memogarden-core/
 │   ├── __init__.py
 │   ├── main.py              # Flask app with CORS, error handlers
 │   ├── config.py            # Settings with pydantic-settings
-│   ├── database.py          # sqlite3 connection & entity helpers
 │   ├── exceptions.py        # Custom exception classes
 │   ├── db/
+│   │   ├── __init__.py       # Core API: entity, transaction operations
+│   │   ├── entity.py         # Entity registry operations
+│   │   ├── transaction.py    # Transaction operations
+│   │   ├── query.py          # Query builders
+│   │   ├── seed.py           # Seed data script
+│   │   ├── schema.sql        # SOURCE OF TRUTH for database
+│   │   └── migrations/       # Future migration scripts
+│   ├── schema/
 │   │   ├── __init__.py
-│   │   ├── schema.sql       # SOURCE OF TRUTH for database
-│   │   ├── seed.py          # Seed data script
-│   │   └── migrations/      # Future migration scripts
-│   ├── schemas/             # Pydantic models (API validation only)
+│   │   ├── schema.sql        # Database schema (moved to db/)
+│   │   └── types.py          # Domain types: Timestamp, Date
+│   ├── schemas/
 │   │   ├── __init__.py
-│   │   └── transaction.py   # TransactionCreate, Update, Response
+│   │   └── transaction.py    # Pydantic models (API validation only)
 │   ├── api/
 │   │   ├── __init__.py
+│   │   ├── validation.py     # @validate_request decorator
 │   │   └── v1/
 │   │       ├── __init__.py
-│   │       └── transactions.py  # (to be implemented)
+│   │       ├── schemas/      # Request/response schemas
+│   │       │   └── transaction.py
+│   │       └── transactions.py  # Transaction endpoints
 │   └── utils/
-│       └── __init__.py
+│       ├── __init__.py
+│       ├── isodatetime.py    # ISO 8601 utilities
+│       └── uid.py            # UUID generation
 ├── tests/
 │   ├── __init__.py
-│   ├── conftest.py          # Test fixtures (use :memory: SQLite)
-│   ├── test_config.py       # Configuration tests
-│   ├── test_database.py     # Database & entity registry tests
-│   ├── test_schemas.py      # Pydantic schema validation tests
-│   ├── test_app.py          # Flask app initialization tests
-│   ├── test_errors.py       # Error handling tests
+│   ├── conftest.py           # Test fixtures (test_db, client)
+│   ├── test_*.py             # 231 tests, 90% coverage
 │   └── api/
-│       └── test_health.py   # Health endpoint tests
+│       ├── test_transactions.py
+│       ├── test_validation.py
+│       └── test_health.py
 ├── data/
 │   └── .gitignore           # Ignore *.db files
-├── .env.example
+├── .env.example             # Environment variables template
 ├── .gitignore
 ├── README.md
 └── pyproject.toml
@@ -125,24 +276,29 @@ memogarden-core/
 
 ## Environment Variables
 
-See [.env.example](.env.example) for all available configuration options.
+See [.env.example](.env.example) for all available configuration options:
+
+- `DATABASE_PATH` - Path to SQLite database file (default: `./data/memogarden.db`)
+- `API_V1_PREFIX` - API v1 prefix (default: `/api/v1`)
+- `CORS_ORIGINS` - Allowed CORS origins as JSON array (default: `["http://localhost:3000"]`)
+- `DEFAULT_CURRENCY` - Default currency code (default: `SGD`)
 
 ## Current Implementation Status
 
-**Completed:**
+**Completed (Step 1 - Core Backend Foundation):**
 - ✅ Step 1.1: Project Setup & Structure
 - ✅ Step 1.2: SQLite Database Schema (with entity registry)
 - ✅ Step 1.3: Pydantic Schemas (API Validation)
 - ✅ Step 1.4: Flask Application & Configuration
+- ✅ Step 1.5: Transaction CRUD API Endpoints (7 endpoints)
+- ✅ Step 1.6: Testing Infrastructure (231 tests, 90% coverage)
+- ✅ Step 1.6.5: Schema Extension & Migration Design (docs in `/plan/future/`)
 
-**Next:**
-- 🔄 Step 1.5: Transaction CRUD API Endpoints
-- ⏳ Step 1.6: Testing Infrastructure
-- ⏳ Step 1.7: Documentation & Development Workflow
+**Next Steps:**
+- 🔄 Step 1.7: Documentation & Development Workflow (in progress)
+- ⏳ Step 2: Authentication & Multi-User Support
 
 See [plan/implementation.md](../plan/implementation.md) for detailed progress.
-
-**Test Coverage:** 73 tests passing (config, database, schemas, Flask app, error handling, health endpoints)
 
 ## Core Philosophy
 
@@ -151,6 +307,29 @@ See [plan/implementation.md](../plan/implementation.md) for detailed progress.
 3. **Mutable Snapshot, Immutable Memory** - Current state can change, but all changes are logged via deltas
 4. **Document-Centric Traceability** - Transactions link to immutable artifacts in Soil (emails, invoices, statements)
 5. **Agent-First Design** - Humans and agents use the same APIs
+
+## Design Principles
+
+- **Synchronous Execution** - Flask + sqlite3 for simplicity and deterministic debugging
+- **No ORM** - Raw SQL queries with parameterized statements
+- **Entity Registry** - Global metadata table for all entity types
+- **Labels not Entities** - Accounts and categories are user-defined strings, not database entities
+- **UTC Everywhere** - All timestamps in ISO 8601 UTC format
+- **Test-Driven** - 90% test coverage with behavior-focused tests (no mocks)
+
+## Development Workflow
+
+1. **Always run from the correct directory:**
+   - `/home/kureshii/memogarden/memogarden-core/` for Poetry commands
+   - `/home/kureshii/memogarden/` for convenience scripts
+
+2. **Make changes** to code
+
+3. **Run tests** to verify: `poetry run pytest`
+
+4. **Check coverage** if needed: `poetry run pytest --cov=memogarden_core`
+
+5. **Commit** with clear messages describing what and why
 
 ## Contributing
 
