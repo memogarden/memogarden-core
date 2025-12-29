@@ -18,7 +18,7 @@ from flask import Blueprint, jsonify, request
 from ..api.validation import validate_request
 from ..db import get_core
 from ..exceptions import AuthenticationError
-from . import api_keys, service, token
+from . import api_keys, decorators, service, token
 from .schemas import AdminRegistrationResponse, APIKeyCreate, TokenResponse, UserCreate, UserLogin
 
 logger = logging.getLogger(__name__)
@@ -33,31 +33,17 @@ auth_bp = Blueprint("auth", __name__)
 # ============================================================================
 
 
-def _is_localhost_request() -> bool:
-    """
-    Check if the request is from localhost.
-
-    Returns True if the remote address is localhost (127.0.0.1, ::1, or 'localhost').
-    Can be bypassed via config.bypass_localhost_check for testing.
-    """
-    from ..config import settings
-
-    if settings.bypass_localhost_check:
-        return False
-
-    remote_addr = request.remote_addr or ""
-    return remote_addr in {"127.0.0.1", "::1", "localhost"}
-
-
 @auth_bp.route("/admin/register", methods=["POST"])
 @validate_request
+@decorators.localhost_only
+@decorators.first_time_only
 def admin_register(data: UserCreate):
     """
     Create admin account (localhost only, one-time).
 
-    This endpoint is only accessible:
-    1. From localhost (127.0.0.1, ::1)
-    2. When no users exist in the database
+    Security constraints enforced by decorators:
+    - @localhost_only: Only accessible from localhost (127.0.0.1, ::1)
+    - @first_time_only: Only accessible when no admin user exists
 
     Args:
         data: User creation data with username and password
@@ -90,24 +76,9 @@ def admin_register(data: UserCreate):
     }
     ```
     """
-    # Check localhost access
-    if not _is_localhost_request():
-        logger.warning(f"Admin registration attempt from non-localhost: {request.remote_addr}")
-        raise AuthenticationError(
-            "Admin registration is only accessible from localhost",
-            {"remote_addr": request.remote_addr}
-        )
-
     core = get_core()
     try:
-        # Check if admin already exists
-        if service.has_admin_user(core._conn):
-            logger.warning("Admin registration attempted when admin already exists")
-            raise AuthenticationError(
-                "Admin account already exists. Registration is disabled."
-            )
-
-        # Create admin user
+        # Create admin user (authorization handled by decorators)
         user = service.create_user(core._conn, data, is_admin=True)
         core._conn.commit()
 

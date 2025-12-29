@@ -26,6 +26,6 @@ Auth UI pages:
 - GET / - Index page (redirects to /api-keys or /login)
 """
 
-from . import api, api_keys, schemas, service, token, ui
+from . import api, api_keys, decorators, schemas, service, token, ui
 
-__all__ = ["schemas", "service", "token", "api_keys", "api", "ui"]
+__all__ = ["schemas", "service", "token", "api_keys", "decorators", "api", "ui"]
