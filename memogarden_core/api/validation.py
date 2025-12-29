@@ -7,11 +7,14 @@ validation error messages. No need to obscure information for "security".
 
 import functools
 import inspect
+import logging
 
 from flask import request
 from pydantic import BaseModel, ValidationError
 
 from ..exceptions import ValidationError as MGValidationError
+
+logger = logging.getLogger(__name__)
 
 
 def _find_body_parameter(params: list[inspect.Parameter], view_args: dict) -> tuple[inspect.Parameter | None, type | None]:
@@ -94,6 +97,13 @@ def _validate_request_body(model_class: type) -> BaseModel:
         return model_class(**request.json)
     except ValidationError as e:
         errors = _format_validation_errors(e.errors())
+
+        # Log validation errors to stderr for debugging
+        logger.warning(
+            f"Validation failed for {model_class.__name__}: "
+            f"path={request.path}, errors={errors}, received={request.json}"
+        )
+
         raise MGValidationError(
             f"Request validation failed for {model_class.__name__}. "
             f"See details for specific fields.",

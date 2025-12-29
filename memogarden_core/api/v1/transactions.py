@@ -9,18 +9,24 @@ This module implements RESTful endpoints for transaction management:
 - GET    /api/v1/transactions/accounts        - List distinct accounts
 - GET    /api/v1/transactions/categories      - List distinct categories
 
+All endpoints require authentication via JWT token or API key (enforced via before_request).
+
 Architecture Notes:
 - Accounts and categories are labels (strings), not relational entities
 - Entity registry pattern: create entity first, then transaction
 - ISO 8601 timestamps for all date/time fields
 - Parameterized queries to prevent SQL injection
+- Author field tracks which user created each transaction
 """
 
-from flask import Blueprint, jsonify, request
+import logging
+from flask import Blueprint, g, jsonify, request
 
 from ...db import get_core
 from ..validation import validate_request
 from .schemas.transaction import TransactionCreate, TransactionUpdate
+
+logger = logging.getLogger(__name__)
 
 # Create Blueprint
 transactions_bp = Blueprint('transactions', __name__, url_prefix='/transactions')
@@ -62,6 +68,9 @@ def create_transaction(data: TransactionCreate):
     """
     Create a new transaction.
 
+    Requires authentication via JWT token or API key (enforced by before_request).
+    The authenticated user's username is stored as the transaction author.
+
     Request Body (TransactionCreate):
         - amount: float (required)
         - currency: str (default: "SGD")
@@ -74,11 +83,15 @@ def create_transaction(data: TransactionCreate):
     Returns:
         201: TransactionResponse with created transaction
         400: Validation error
+        401: Authentication required (if no valid auth provided)
     """
     # ============================================================================
     # NEW: Core API Implementation with @validate_request decorator
     # ============================================================================
     # Use atomic transaction for coordinated entity + transaction creation
+    # Get author from authenticated user (set by before_request:authenticate)
+    author = g.username
+
     with get_core(atomic=True) as core:
         transaction_id = core.transaction.create(
             amount=data.amount,
@@ -86,7 +99,8 @@ def create_transaction(data: TransactionCreate):
             description=data.description,
             account=data.account,
             category=data.category,
-            notes=data.notes
+            notes=data.notes,
+            author=author  # Track who created this transaction
         )
     # Context commits atomically - both entity and transaction created together
 
@@ -142,12 +156,15 @@ def get_transaction(transaction_id: str):
     """
     Get a single transaction by ID.
 
+    Requires authentication via JWT token or API key (enforced by before_request).
+
     Args:
         transaction_id: UUID of the transaction
 
     Returns:
         200: TransactionResponse
         404: Transaction not found
+        401: Authentication required (if no valid auth provided)
     """
     core = get_core()
     row = core.transaction.get_by_id(transaction_id)
@@ -160,6 +177,8 @@ def list_transactions():
     """
     List transactions with optional filtering.
 
+    Requires authentication via JWT token or API key (enforced by before_request).
+
     Query Parameters:
         - start_date: ISO 8601 date (YYYY-MM-DD) - Filter from this date
         - end_date: ISO 8601 date (YYYY-MM-DD) - Filter until this date
@@ -171,6 +190,7 @@ def list_transactions():
 
     Returns:
         200: Array of TransactionResponse objects
+        401: Authentication required (if no valid auth provided)
     """
     # Parse query parameters
     start_date = request.args.get("start_date")
@@ -201,6 +221,8 @@ def update_transaction(transaction_id: str, data: TransactionUpdate):
     """
     Update a transaction.
 
+    Requires authentication via JWT token or API key.
+
     Only provided fields are updated (partial update).
 
     Args:
@@ -220,6 +242,7 @@ def update_transaction(transaction_id: str, data: TransactionUpdate):
         200: TransactionResponse with updated transaction
         404: Transaction not found
         400: Validation error
+        401: Authentication required
     """
     core = get_core()
 
@@ -243,6 +266,8 @@ def delete_transaction(transaction_id: str):
     """
     Delete a transaction (soft delete via superseding).
 
+    Requires authentication via JWT token or API key (enforced by before_request).
+
     Creates a tombstone entity and marks the original as superseded.
 
     Args:
@@ -251,6 +276,7 @@ def delete_transaction(transaction_id: str):
     Returns:
         204: No content (successful deletion)
         404: Transaction not found
+        401: Authentication required (if no valid auth provided)
     """
     with get_core(atomic=True) as core:
         # Verify transaction exists
@@ -270,11 +296,14 @@ def list_accounts():
     """
     List distinct account labels.
 
+    Requires authentication via JWT token or API key (enforced by before_request).
+
     Useful for UI autocomplete/dropdowns.
     Accounts are simple string labels, not entities.
 
     Returns:
         200: Array of account label strings
+        401: Authentication required (if no valid auth provided)
     """
     core = get_core()
     rows = core._conn.execute(
@@ -289,11 +318,14 @@ def list_categories():
     """
     List distinct category labels.
 
+    Requires authentication via JWT token or API key (enforced by before_request).
+
     Useful for UI autocomplete/dropdowns.
     Categories are simple string labels, not entities.
 
     Returns:
         200: Array of category label strings
+        401: Authentication required (if no valid auth provided)
     """
     core = get_core()
     rows = core._conn.execute(

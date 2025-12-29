@@ -504,3 +504,27 @@ def revoke_api_key(api_key_id: str):
 
     return jsonify({"message": "API key revoked successfully"}), 200
     # Connection closes automatically via __del__
+
+
+# ============================================================================
+# Test Endpoint for @auth_required Decorator
+# ============================================================================
+
+
+@auth_bp.route("/auth/test-require-auth", methods=["GET"])
+@decorators.auth_required
+def test_require_auth():
+    """
+    Test endpoint for @auth_required decorator.
+
+    Returns authenticated user info from flask.g.
+    Only used for testing authentication middleware.
+    """
+    from flask import g
+
+    return jsonify({
+        "user_id": g.user_id,
+        "username": g.username,
+        "is_admin": g.is_admin,
+        "auth_method": g.auth_method
+    }), 200

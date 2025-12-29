@@ -27,5 +27,6 @@ Auth UI pages:
 """
 
 from . import api, api_keys, decorators, schemas, service, token, ui
+from .decorators import auth_required
 
-__all__ = ["schemas", "service", "token", "api_keys", "decorators", "api", "ui"]
+__all__ = ["schemas", "service", "token", "api_keys", "decorators", "api", "ui", "auth_required"]

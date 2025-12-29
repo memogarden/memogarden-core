@@ -88,7 +88,7 @@ def setup_database(client):
 class TestCreateTransaction:
     """Tests for POST /api/v1/transactions"""
 
-    def test_create_transaction_valid(self, client):
+    def test_create_transaction_valid(self, client, auth_headers):
         """Test creating a valid transaction."""
         response = client.post(
             "/api/v1/transactions",
@@ -100,7 +100,8 @@ class TestCreateTransaction:
                 "account": "Personal",
                 "category": "Food",
                 "notes": "Sandwich and coffee"
-            }
+            },
+            headers=auth_headers
         )
 
         assert response.status_code == 201
@@ -112,12 +113,12 @@ class TestCreateTransaction:
         assert data["account"] == "Personal"
         assert data["category"] == "Food"
         assert data["notes"] == "Sandwich and coffee"
-        assert data["author"] == "system"
+        assert data["author"] == "testuser"
         assert "id" in data
         assert "created_at" in data
         assert "updated_at" in data
 
-    def test_create_transaction_minimal(self, client):
+    def test_create_transaction_minimal(self, client, auth_headers):
         """Test creating transaction with minimal required fields."""
         response = client.post(
             "/api/v1/transactions",
@@ -125,7 +126,8 @@ class TestCreateTransaction:
                 "amount": -30.00,
                 "transaction_date": "2025-12-23",
                 "account": "Personal"
-            }
+            },
+            headers=auth_headers
         )
 
         assert response.status_code == 201
@@ -137,7 +139,7 @@ class TestCreateTransaction:
         assert data["category"] is None
         assert data["notes"] is None
 
-    def test_create_transaction_invalid_data(self, client):
+    def test_create_transaction_invalid_data(self, client, auth_headers):
         """Test creating transaction with invalid data."""
         response = client.post(
             "/api/v1/transactions",
@@ -145,7 +147,8 @@ class TestCreateTransaction:
                 "amount": "not_a_number",  # Invalid type
                 "transaction_date": "2025-12-23",
                 "account": "Personal"
-            }
+            },
+            headers=auth_headers
         )
 
         assert response.status_code == 400
@@ -153,7 +156,7 @@ class TestCreateTransaction:
         assert "error" in data
         assert data["error"]["type"] == "ValidationError"
 
-    def test_create_transaction_missing_required_field(self, client):
+    def test_create_transaction_missing_required_field(self, client, auth_headers):
         """Test creating transaction missing required field."""
         response = client.post(
             "/api/v1/transactions",
@@ -161,7 +164,8 @@ class TestCreateTransaction:
                 "amount": -20.00,
                 "account": "Personal"
                 # Missing transaction_date
-            }
+            },
+            headers=auth_headers
         )
 
         assert response.status_code == 400
@@ -172,15 +176,15 @@ class TestCreateTransaction:
 class TestGetTransaction:
     """Tests for GET /api/v1/transactions/{id}"""
 
-    def test_get_transaction_found(self, client):
+    def test_get_transaction_found(self, client, auth_headers):
         """Test getting an existing transaction."""
         # First, get the list to find an ID
-        list_response = client.get("/api/v1/transactions")
+        list_response = client.get("/api/v1/transactions", headers=auth_headers)
         transactions = list_response.get_json()
         transaction_id = transactions[0]["id"]
 
         # Get specific transaction
-        response = client.get(f"/api/v1/transactions/{transaction_id}")
+        response = client.get(f"/api/v1/transactions/{transaction_id}", headers=auth_headers)
 
         assert response.status_code == 200
         data = response.get_json()
@@ -189,10 +193,10 @@ class TestGetTransaction:
         assert "currency" in data
         assert "created_at" in data
 
-    def test_get_transaction_not_found(self, client):
+    def test_get_transaction_not_found(self, client, auth_headers):
         """Test getting a non-existent transaction."""
         fake_id = str(uuid4())
-        response = client.get(f"/api/v1/transactions/{fake_id}")
+        response = client.get(f"/api/v1/transactions/{fake_id}", headers=auth_headers)
 
         assert response.status_code == 404
         data = response.get_json()
@@ -203,28 +207,29 @@ class TestGetTransaction:
 class TestListTransactions:
     """Tests for GET /api/v1/transactions"""
 
-    def test_list_transactions_default(self, client):
+    def test_list_transactions_default(self, client, auth_headers):
         """Test listing all transactions."""
-        response = client.get("/api/v1/transactions")
+        response = client.get("/api/v1/transactions", headers=auth_headers)
 
         assert response.status_code == 200
         data = response.get_json()
         assert isinstance(data, list)
         assert len(data) == 5  # 5 transactions from fixture
 
-    def test_list_transactions_with_date_filter(self, client):
+    def test_list_transactions_with_date_filter(self, client, auth_headers):
         """Test filtering by date range."""
         response = client.get(
-            "/api/v1/transactions?start_date=2025-12-21&end_date=2025-12-23"
+            "/api/v1/transactions?start_date=2025-12-21&end_date=2025-12-23",
+            headers=auth_headers
         )
 
         assert response.status_code == 200
         data = response.get_json()
         assert len(data) == 3  # Transactions from Dec 21-23
 
-    def test_list_transactions_with_account_filter(self, client):
+    def test_list_transactions_with_account_filter(self, client, auth_headers):
         """Test filtering by account."""
-        response = client.get("/api/v1/transactions?account=Personal")
+        response = client.get("/api/v1/transactions?account=Personal", headers=auth_headers)
 
         assert response.status_code == 200
         data = response.get_json()
@@ -232,9 +237,9 @@ class TestListTransactions:
         for tx in data:
             assert tx["account"] == "Personal"
 
-    def test_list_transactions_with_category_filter(self, client):
+    def test_list_transactions_with_category_filter(self, client, auth_headers):
         """Test filtering by category."""
-        response = client.get("/api/v1/transactions?category=Food")
+        response = client.get("/api/v1/transactions?category=Food", headers=auth_headers)
 
         assert response.status_code == 200
         data = response.get_json()
@@ -242,15 +247,15 @@ class TestListTransactions:
         for tx in data:
             assert tx["category"] == "Food"
 
-    def test_list_transactions_with_limit_offset(self, client):
+    def test_list_transactions_with_limit_offset(self, client, auth_headers):
         """Test pagination with limit and offset."""
         # Get first page
-        response1 = client.get("/api/v1/transactions?limit=2&offset=0")
+        response1 = client.get("/api/v1/transactions?limit=2&offset=0", headers=auth_headers)
         data1 = response1.get_json()
         assert len(data1) == 2
 
         # Get second page
-        response2 = client.get("/api/v1/transactions?limit=2&offset=2")
+        response2 = client.get("/api/v1/transactions?limit=2&offset=2", headers=auth_headers)
         data2 = response2.get_json()
         assert len(data2) == 2
 
@@ -259,10 +264,11 @@ class TestListTransactions:
         ids2 = {tx["id"] for tx in data2}
         assert ids1.isdisjoint(ids2)
 
-    def test_list_transactions_combined_filters(self, client):
+    def test_list_transactions_combined_filters(self, client, auth_headers):
         """Test combining multiple filters."""
         response = client.get(
-            "/api/v1/transactions?account=Personal&category=Transport"
+            "/api/v1/transactions?account=Personal&category=Transport",
+            headers=auth_headers
         )
 
         assert response.status_code == 200
@@ -276,10 +282,10 @@ class TestListTransactions:
 class TestUpdateTransaction:
     """Tests for PUT /api/v1/transactions/{id}"""
 
-    def test_update_transaction_full(self, client):
+    def test_update_transaction_full(self, client, auth_headers):
         """Test updating all transaction fields."""
         # Get a transaction ID
-        list_response = client.get("/api/v1/transactions")
+        list_response = client.get("/api/v1/transactions", headers=auth_headers)
         transaction_id = list_response.get_json()[0]["id"]
 
         # Update transaction
@@ -293,7 +299,8 @@ class TestUpdateTransaction:
                 "account": "Household",
                 "category": "Utilities",
                 "notes": "Updated notes"
-            }
+            },
+            headers=auth_headers
         )
 
         assert response.status_code == 200
@@ -305,19 +312,20 @@ class TestUpdateTransaction:
         assert data["category"] == "Utilities"
         assert data["notes"] == "Updated notes"
 
-    def test_update_transaction_partial(self, client):
+    def test_update_transaction_partial(self, client, auth_headers):
         """Test partial update of transaction fields."""
         # Get a transaction ID
-        list_response = client.get("/api/v1/transactions")
+        list_response = client.get("/api/v1/transactions", headers=auth_headers)
         transaction_id = list_response.get_json()[0]["id"]
 
         # Get original data
-        original = client.get(f"/api/v1/transactions/{transaction_id}").get_json()
+        original = client.get(f"/api/v1/transactions/{transaction_id}", headers=auth_headers).get_json()
 
         # Update only amount
         response = client.put(
             f"/api/v1/transactions/{transaction_id}",
-            json={"amount": -99.99}
+            json={"amount": -99.99},
+            headers=auth_headers
         )
 
         assert response.status_code == 200
@@ -327,27 +335,29 @@ class TestUpdateTransaction:
         assert data["currency"] == original["currency"]
         assert data["description"] == original["description"]
 
-    def test_update_transaction_not_found(self, client):
+    def test_update_transaction_not_found(self, client, auth_headers):
         """Test updating non-existent transaction."""
         fake_id = str(uuid4())
         response = client.put(
             f"/api/v1/transactions/{fake_id}",
-            json={"amount": -50.00}
+            json={"amount": -50.00},
+            headers=auth_headers
         )
 
         assert response.status_code == 404
         data = response.get_json()
         assert data["error"]["type"] == "ResourceNotFound"
 
-    def test_update_transaction_invalid_data(self, client):
+    def test_update_transaction_invalid_data(self, client, auth_headers):
         """Test updating with invalid data."""
         # Get a transaction ID
-        list_response = client.get("/api/v1/transactions")
+        list_response = client.get("/api/v1/transactions", headers=auth_headers)
         transaction_id = list_response.get_json()[0]["id"]
 
         response = client.put(
             f"/api/v1/transactions/{transaction_id}",
-            json={"amount": "not_a_number"}
+            json={"amount": "not_a_number"},
+            headers=auth_headers
         )
 
         assert response.status_code == 400
@@ -358,7 +368,7 @@ class TestUpdateTransaction:
 class TestDeleteTransaction:
     """Tests for DELETE /api/v1/transactions/{id}"""
 
-    def test_delete_transaction(self, client):
+    def test_delete_transaction(self, client, auth_headers):
         """Test deleting a transaction (soft delete via superseding)."""
         # Create a transaction to delete
         create_response = client.post(
@@ -367,36 +377,37 @@ class TestDeleteTransaction:
                 "amount": -10.00,
                 "transaction_date": "2025-12-23",
                 "account": "Personal"
-            }
+            },
+            headers=auth_headers
         )
         transaction_id = create_response.get_json()["id"]
 
         # Delete it (soft delete via superseding)
-        response = client.delete(f"/api/v1/transactions/{transaction_id}")
+        response = client.delete(f"/api/v1/transactions/{transaction_id}", headers=auth_headers)
         assert response.status_code == 204
         assert response.data == b""
 
         # Verify transaction still exists but is marked as superseded
-        get_response = client.get(f"/api/v1/transactions/{transaction_id}")
+        get_response = client.get(f"/api/v1/transactions/{transaction_id}", headers=auth_headers)
         assert get_response.status_code == 200
         data = get_response.get_json()
         assert data["superseded_by"] is not None
         assert data["superseded_at"] is not None
 
         # Verify it doesn't appear in default list (excludes superseded)
-        list_response = client.get("/api/v1/transactions")
+        list_response = client.get("/api/v1/transactions", headers=auth_headers)
         list_data = list_response.get_json()
         assert not any(tx["id"] == transaction_id for tx in list_data)
 
         # Verify it appears when include_superseded=true
-        list_with_superseded = client.get("/api/v1/transactions?include_superseded=true")
+        list_with_superseded = client.get("/api/v1/transactions?include_superseded=true", headers=auth_headers)
         list_data_with = list_with_superseded.get_json()
         assert any(tx["id"] == transaction_id for tx in list_data_with)
 
-    def test_delete_transaction_not_found(self, client):
+    def test_delete_transaction_not_found(self, client, auth_headers):
         """Test deleting non-existent transaction."""
         fake_id = str(uuid4())
-        response = client.delete(f"/api/v1/transactions/{fake_id}")
+        response = client.delete(f"/api/v1/transactions/{fake_id}", headers=auth_headers)
 
         assert response.status_code == 404
         data = response.get_json()
@@ -406,18 +417,18 @@ class TestDeleteTransaction:
 class TestLabelEndpoints:
     """Tests for label utility endpoints"""
 
-    def test_list_accounts(self, client):
+    def test_list_accounts(self, client, auth_headers):
         """Test listing distinct account labels."""
-        response = client.get("/api/v1/transactions/accounts")
+        response = client.get("/api/v1/transactions/accounts", headers=auth_headers)
 
         assert response.status_code == 200
         data = response.get_json()
         assert isinstance(data, list)
         assert set(data) == {"Household", "Personal"}
 
-    def test_list_categories(self, client):
+    def test_list_categories(self, client, auth_headers):
         """Test listing distinct category labels."""
-        response = client.get("/api/v1/transactions/categories")
+        response = client.get("/api/v1/transactions/categories", headers=auth_headers)
 
         assert response.status_code == 200
         data = response.get_json()
@@ -428,7 +439,7 @@ class TestLabelEndpoints:
         assert "Food" in data
         assert "Transport" in data
 
-    def test_list_labels_empty_database(self, client):
+    def test_list_labels_empty_database(self, client, auth_headers):
         """Test listing labels when no transactions exist."""
         # Clear all transactions
         from memogarden_core.db import get_core
@@ -437,8 +448,8 @@ class TestLabelEndpoints:
         core._conn.commit()
 
         # Should return empty arrays
-        accounts_response = client.get("/api/v1/transactions/accounts")
-        categories_response = client.get("/api/v1/transactions/categories")
+        accounts_response = client.get("/api/v1/transactions/accounts", headers=auth_headers)
+        categories_response = client.get("/api/v1/transactions/categories", headers=auth_headers)
 
         assert accounts_response.status_code == 200
         assert accounts_response.get_json() == []

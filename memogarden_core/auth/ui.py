@@ -52,7 +52,7 @@ ADMIN_REGISTER_HTML = """
         </div>
         {% endif %}
 
-        <form method="POST" action="/admin/register" class="space-y-4">
+        <form id="adminRegisterForm" class="space-y-4">
             <div>
                 <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Username</label>
                 <input
@@ -91,9 +91,68 @@ ADMIN_REGISTER_HTML = """
                 Create Admin Account
             </button>
         </form>
+
     </div>
 </body>
 </html>
+<script>
+    // Handle admin registration form submission
+    document.getElementById('adminRegisterForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const formData = new FormData(this);
+        const data = {
+            username: formData.get('username'),
+            password: formData.get('password')
+        };
+
+        try {
+            const response = await fetch('/admin/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                // Registration successful - redirect to login
+                window.location.href = '/login?registered=true';
+            } else {
+                // Show error(s) - display field-specific validation errors
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'bg-red-100 text-red-700 border border-red-400 rounded-lg p-4 mb-4';
+
+                // Check if we have field-specific validation errors
+                if (result.error?.details?.errors && Array.isArray(result.error.details.errors)) {
+                    // Build error message with field-specific details
+                    let errorHtml = '<strong>Registration failed:</strong><ul class="list-disc list-inside mt-2">';
+                    result.error.details.errors.forEach(err => {
+                        errorHtml += `<li><strong>${err.field}:</strong> ${err.message}</li>`;
+                    });
+                    errorHtml += '</ul>';
+                    errorDiv.innerHTML = errorHtml;
+                } else {
+                    // Fallback to generic error message
+                    errorDiv.textContent = result.error?.message || 'Registration failed';
+                }
+
+                this.insertBefore(errorDiv, this.firstChild);
+
+                // Remove error after 8 seconds (longer for field errors)
+                setTimeout(() => errorDiv.remove(), 8000);
+            }
+        } catch (error) {
+            console.error('Registration error:', error);
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'bg-red-100 text-red-700 border border-red-400 rounded-lg p-4 mb-4';
+            errorDiv.textContent = 'Network error. Please try again.';
+            this.insertBefore(errorDiv, this.firstChild);
+        }
+    });
+</script>
 """
 
 
@@ -145,12 +204,9 @@ def admin_register_page():
     core = get_core()
     try:
         if service.has_admin_user(core._conn):
-            logger.warning("Admin registration attempted when admin already exists")
-            return render_template_string(
-                ADMIN_REGISTER_HTML,
-                error="Admin account already exists. Registration is disabled.",
-                message=None
-            )
+            logger.info("Admin already exists, redirecting to login")
+            from flask import redirect
+            return redirect('/login?existing=true')
 
         return render_template_string(ADMIN_REGISTER_HTML, error=None, message=None)
     except Exception as e:

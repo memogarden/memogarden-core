@@ -92,7 +92,150 @@ poetry run pytest tests/api/test_transactions.py
 poetry run pytest -v
 ```
 
-**Test Coverage:** 231 tests passing, 90% coverage (exceeds 80% target)
+**Test Coverage:** 394 tests passing, 91% coverage (exceeds 80% target)
+
+### Manual Testing
+
+For manual testing of the complete authentication and API flow:
+
+#### 1. Start the development server
+
+```bash
+# From memogarden-core directory
+poetry run flask --app memogarden_core.main run --debug
+
+# Server will be available at http://localhost:5000
+```
+
+#### 2. Initial admin setup (first time only)
+
+1. Open browser to: http://localhost:5000
+2. You'll be redirected to admin registration page (localhost only)
+3. Create admin account (username + password)
+4. After registration, you'll be redirected to login
+
+#### 3. Test authentication flow
+
+**Via Web UI:**
+- Login at http://localhost:5000/login
+- Visit settings page: http://localhost:5000/settings (shows user info + token expiry)
+- Manage API keys: http://localhost:5000/api-keys (list, create, revoke)
+
+**Via API:**
+```bash
+# Login and get JWT token
+curl -X POST http://localhost:5000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "your_username", "password": "your_password"}' \
+  -s | jq .
+
+# Save the token for subsequent requests
+export TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+# Test protected endpoint with JWT
+curl http://localhost:5000/api/v1/transactions \
+  -H "Authorization: Bearer $TOKEN" \
+  -s | jq .
+
+# Test /auth/me endpoint
+curl http://localhost:5000/auth/me \
+  -H "Authorization: Bearer $TOKEN" \
+  -s | jq .
+```
+
+#### 4. Test API key creation and usage
+
+```bash
+# Create an API key (via JWT token)
+curl -X POST http://localhost:5000/api-keys/ \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "test-script", "expires_at": null}' \
+  -s | jq .
+
+# Save the full API key (only shown once!)
+export API_KEY="mg_sk_agent_abc123def456..."
+
+# Test API key authentication
+curl http://localhost:5000/api/v1/transactions \
+  -H "X-API-Key: $API_KEY" \
+  -s | jq .
+
+# List your API keys
+curl http://localhost:5000/api-keys/ \
+  -H "Authorization: Bearer $TOKEN" \
+  -s | jq .
+```
+
+#### 5. Test transaction endpoints
+
+```bash
+# Create a transaction
+curl -X POST http://localhost:5000/api/v1/transactions \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "amount": -15.50,
+    "currency": "SGD",
+    "transaction_date": "2025-12-29",
+    "description": "Manual test transaction",
+    "account": "Personal",
+    "category": "Food"
+  }' \
+  -s | jq .
+
+# List all transactions
+curl http://localhost:5000/api/v1/transactions \
+  -H "Authorization: Bearer $TOKEN" \
+  -s | jq .
+
+# Get distinct labels
+curl http://localhost:5000/api/v1/transactions/accounts \
+  -H "Authorization: Bearer $TOKEN" \
+  -s | jq .
+
+curl http://localhost:5000/api/v1/transactions/categories \
+  -H "Authorization: Bearer $TOKEN" \
+  -s | jq .
+```
+
+#### 6. Test authentication enforcement
+
+```bash
+# Test that unauthenticated requests are rejected
+curl http://localhost:5000/api/v1/transactions
+# Expected: 401 Unauthorized
+
+# Test with invalid token
+curl http://localhost:5000/api/v1/transactions \
+  -H "Authorization: Bearer invalid_token"
+# Expected: 401 Unauthorized
+
+# Test with invalid API key
+curl http://localhost:5000/api/v1/transactions \
+  -H "X-API-Key: invalid_key"
+# Expected: 401 Unauthorized
+```
+
+#### Manual Testing Checklist
+
+- [ ] Admin registration page loads (localhost only)
+- [ ] Admin account created successfully
+- [ ] Login page accepts valid credentials
+- [ ] Login rejects invalid credentials
+- [ ] Settings page shows user info and token expiry
+- [ ] API key creation works (full key shown once)
+- [ ] API key listing works (no full keys shown)
+- [ ] API key revocation works
+- [ ] JWT authentication works for API endpoints
+- [ ] API key authentication works for API endpoints
+- [ ] Unauthenticated requests return 401
+- [ ] Invalid tokens return 401
+- [ ] Invalid API keys return 401
+- [ ] Transaction creation works with auth
+- [ ] Transaction listing works with auth
+- [ ] Filter endpoints (accounts, categories) work with auth
+- [ ] Health check works without auth (public endpoint)
 
 ## API Endpoints
 
@@ -109,11 +252,30 @@ Response:
 
 ### Transaction Endpoints
 
+All transaction endpoints require authentication. Use either:
+- JWT Token: `Authorization: Bearer <token>`
+- API Key: `X-API-Key: <api_key>`
+
 #### Create Transaction
 
 ```bash
+# With JWT Token
 curl -X POST http://localhost:5000/api/v1/transactions \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{
+    "amount": -15.50,
+    "currency": "SGD",
+    "transaction_date": "2025-12-27",
+    "description": "Coffee at Starbucks",
+    "account": "Personal",
+    "category": "Food"
+  }'
+
+# With API Key
+curl -X POST http://localhost:5000/api/v1/transactions \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: mg_sk_agent_abc123def456..." \
   -d '{
     "amount": -15.50,
     "currency": "SGD",
@@ -282,6 +444,155 @@ See [.env.example](.env.example) for all available configuration options:
 - `API_V1_PREFIX` - API v1 prefix (default: `/api/v1`)
 - `CORS_ORIGINS` - Allowed CORS origins as JSON array (default: `["http://localhost:3000"]`)
 - `DEFAULT_CURRENCY` - Default currency code (default: `SGD`)
+- `JWT_SECRET_KEY` - Secret key for JWT token signing (default: `change-me-in-production-use-env-var`)
+- `JWT_EXPIRY_DAYS` - JWT token expiry in days (default: `30`)
+- `BYPASS_LOCALHOST_CHECK` - Bypass localhost checks for testing only (default: `false`)
+
+## Authentication
+
+MemoGarden Core supports two authentication methods:
+
+1. **JWT Tokens** - For interactive clients (Flutter app, web UI)
+2. **API Keys** - For agents and scripts (programmatic access)
+
+### Initial Setup
+
+When you first start the API, you'll need to create an admin account. The admin registration endpoint is only accessible from localhost and only works once.
+
+1. Start the API server:
+   ```bash
+   poetry run flask --app memogarden_core.main run --debug
+   ```
+
+2. Open your browser to: http://localhost:5000
+
+3. You'll be redirected to the admin registration page. Create your admin account.
+
+4. After registration, you can login at: http://localhost:5000/login
+
+### JWT Token Authentication
+
+#### Login
+
+```bash
+curl -X POST http://localhost:5000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "your_username",
+    "password": "your_password"
+  }'
+```
+
+Response (200 OK):
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer",
+  "user": {
+    "id": "user-uuid",
+    "username": "your_username",
+    "is_admin": true
+  }
+}
+```
+
+#### Using JWT Token
+
+Include the token in the Authorization header:
+
+```bash
+curl http://localhost:5000/api/v1/transactions \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+#### Get Current User Info
+
+```bash
+curl http://localhost:5000/auth/me \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+Response (200 OK):
+```json
+{
+  "id": "user-uuid",
+  "username": "your_username",
+  "is_admin": true,
+  "created_at": "2025-12-29T10:00:00Z"
+}
+```
+
+### API Key Authentication
+
+API keys are recommended for agents, scripts, and programmatic access.
+
+#### Create an API Key
+
+```bash
+curl -X POST http://localhost:5000/api-keys/ \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "my-script",
+    "expires_at": null
+  }'
+```
+
+Response (201 Created):
+```json
+{
+  "id": "api-key-uuid",
+  "name": "my-script",
+  "key_prefix": "mg_sk_agent_abc1",
+  "key": "mg_sk_agent_abc123def456...full_key_only_shown_once",
+  "expires_at": null,
+  "created_at": "2025-12-29T10:00:00Z"
+}
+```
+
+**Important:** Copy the `key` value immediately. It will not be shown again.
+
+#### Using API Key
+
+Include the API key in the `X-API-Key` header:
+
+```bash
+curl http://localhost:5000/api/v1/transactions \
+  -H "X-API-Key: mg_sk_agent_abc123def456..."
+```
+
+#### List API Keys
+
+```bash
+curl http://localhost:5000/api-keys/ \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+Response (200 OK):
+```json
+{
+  "api_keys": [
+    {
+      "id": "api-key-uuid",
+      "name": "my-script",
+      "key_prefix": "mg_sk_agent_abc1",
+      "expires_at": null,
+      "created_at": "2025-12-29T10:00:00Z",
+      "last_seen": "2025-12-29T12:30:00Z",
+      "revoked_at": null
+    }
+  ]
+}
+```
+
+#### Revoke API Key
+
+```bash
+curl -X DELETE http://localhost:5000/api-keys/{api_key_id} \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+Response (204 No Content): API key revoked successfully.
 
 ## Current Implementation Status
 
@@ -291,12 +602,25 @@ See [.env.example](.env.example) for all available configuration options:
 - ✅ Step 1.3: Pydantic Schemas (API Validation)
 - ✅ Step 1.4: Flask Application & Configuration
 - ✅ Step 1.5: Transaction CRUD API Endpoints (7 endpoints)
-- ✅ Step 1.6: Testing Infrastructure (231 tests, 90% coverage)
+- ✅ Step 1.6: Testing Infrastructure (385 tests, 90% coverage)
 - ✅ Step 1.6.5: Schema Extension & Migration Design (docs in `/plan/future/`)
 
+**Completed (Step 2 - Authentication & Multi-User Support):**
+- ✅ Step 2.1: Database Schema: Users and API Keys
+- ✅ Step 2.2: Pydantic Schemas (User, APIKey, Auth)
+- ✅ Step 2.3: JWT Token Service
+- ✅ Step 2.4: Authentication Endpoints (login, logout, /me, admin registration)
+- ✅ Step 2.5: API Key Management Endpoints
+- ✅ Step 2.6: Authentication Decorators (@localhost_only, @first_time_only)
+- ✅ Step 2.7: HTML UI Pages (login, settings, API keys management)
+- ✅ Step 2.8: Testing Infrastructure (139 auth tests, 94% coverage)
+- ✅ Step 2.9: Documentation & Integration (API-level authentication, updated README)
+
+**Current Work:**
+- 🔄 Step 2.10: Refactor & Test Profiling (in progress - optimize test suite to <2.8s)
+
 **Next Steps:**
-- 🔄 Step 1.7: Documentation & Development Workflow (in progress)
-- ⏳ Step 2: Authentication & Multi-User Support
+- 📋 Step 3: Advanced Core Features (Recurrences, Relations, Deltas)
 
 See [plan/implementation.md](../plan/implementation.md) for detailed progress.
 

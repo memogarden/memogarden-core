@@ -45,7 +45,7 @@ class TestAdminRegisterPage:
             settings.bypass_localhost_check = original_bypass
 
     def test_admin_register_page_admin_exists(self, client: Flask.test_client):
-        """GET /admin/register should return HTML with error when admin exists."""
+        """GET /admin/register should redirect to login when admin exists."""
         # Create admin user
         core = get_core()
         try:
@@ -55,10 +55,10 @@ class TestAdminRegisterPage:
         finally:
             core._conn.close()
 
-        # Try to access registration page
-        response = client.get("/admin/register", base_url="http://localhost:5000")
-        assert response.status_code == 200
-        assert b"Admin account already exists" in response.data
+        # Try to access registration page - should redirect to login
+        response = client.get("/admin/register", base_url="http://localhost:5000", follow_redirects=False)
+        assert response.status_code == 302  # Redirect
+        assert response.location == "/login?existing=true"
 
 
 class TestAdminRegister:
@@ -144,6 +144,59 @@ class TestAdminRegister:
 
         data = json.loads(response.data)
         assert "error" in data
+
+    def test_admin_register_rejects_form_encoded(self, client: Flask.test_client):
+        """Admin registration should reject form-encoded POST requests.
+
+        This test ensures the endpoint only accepts application/json,
+        preventing the bug where form submissions sent form-encoded data
+        that the backend couldn't parse.
+        """
+        response = client.post(
+            "/admin/register",
+            data={"username": "admin", "password": "SecurePass123"},
+            content_type="application/x-www-form-urlencoded",
+            base_url="http://localhost:5000"
+        )
+
+        # Should reject form-encoded requests
+        assert response.status_code == 415  # Unsupported Media Type
+
+        # Response is HTML (not JSON) when validation fails before JSON parsing
+        assert b"Unsupported Media Type" in response.data
+        assert b"application/json" in response.data
+
+    def test_admin_register_field_specific_error_structure(self, client: Flask.test_client):
+        """Validation errors should include field-specific details.
+
+        This ensures the error response structure matches what the
+        frontend JavaScript expects, enabling field-specific error display.
+        """
+        response = client.post(
+            "/admin/register",
+            json={"username": "ab", "password": "123"},  # Both invalid
+            base_url="http://localhost:5000"
+        )
+
+        assert response.status_code == 400
+        data = json.loads(response.data)
+
+        # Verify error structure
+        assert "error" in data
+        assert data["error"]["type"] == "ValidationError"
+        assert "details" in data["error"]
+        assert "errors" in data["error"]["details"]
+
+        # Verify field-specific errors
+        errors = data["error"]["details"]["errors"]
+        assert isinstance(errors, list)
+        assert len(errors) >= 1
+
+        # Each error should have required fields
+        for error in errors:
+            assert "field" in error, "Error should specify which field failed"
+            assert "message" in error, "Error should have human-readable message"
+            assert "expected_type" in error, "Error should include type information"
 
 
 # ============================================================================
