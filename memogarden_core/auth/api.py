@@ -19,6 +19,7 @@ from ..api.validation import validate_request
 from ..db import get_core
 from ..exceptions import AuthenticationError
 from . import api_keys, decorators, service, token
+from .decorators import _authenticate_jwt
 from .schemas import AdminRegistrationResponse, APIKeyCreate, TokenResponse, UserCreate, UserLogin
 
 logger = logging.getLogger(__name__)
@@ -233,33 +234,8 @@ def get_current_user():
     }
     ```
     """
-    # Extract Authorization header
-    auth_header = request.headers.get("Authorization")
-    if auth_header is None:
-        raise AuthenticationError(
-            "Missing authorization header",
-            {"expected": "Authorization: Bearer <token>"}
-        )
-
-    # Parse Bearer token
-    parts = auth_header.split(" ")
-    if len(parts) != 2 or parts[0].lower() != "bearer":
-        raise AuthenticationError(
-            "Invalid authorization header format",
-            {"expected": "Authorization: Bearer <token>"}
-        )
-
-    jwt_token = parts[1]
-
-    # Validate token
-    try:
-        payload = token.validate_access_token(jwt_token)
-    except Exception as e:
-        logger.warning(f"Invalid token on /auth/me: {e}")
-        raise AuthenticationError(
-            "Invalid or expired token",
-            {"token": jwt_token[:20] + "..."}  # Log prefix only
-        )
+    # Authenticate via JWT (API keys not allowed for this endpoint)
+    payload = _authenticate_jwt()
 
     # Get user from database
     core = get_core()
@@ -314,33 +290,8 @@ def list_api_keys():
     ]
     ```
     """
-    # Extract Authorization header
-    auth_header = request.headers.get("Authorization")
-    if auth_header is None:
-        raise AuthenticationError(
-            "Missing authorization header",
-            {"expected": "Authorization: Bearer <token>"}
-        )
-
-    # Parse Bearer token
-    parts = auth_header.split(" ")
-    if len(parts) != 2 or parts[0].lower() != "bearer":
-        raise AuthenticationError(
-            "Invalid authorization header format",
-            {"expected": "Authorization: Bearer <token>"}
-        )
-
-    jwt_token = parts[1]
-
-    # Validate token and get user ID
-    try:
-        payload = token.validate_access_token(jwt_token)
-    except Exception as e:
-        logger.warning(f"Invalid token on /api-keys/: {e}")
-        raise AuthenticationError(
-            "Invalid or expired token",
-            {"token": jwt_token[:20] + "..."}
-        )
+    # Authenticate via JWT (API keys not allowed for listing API keys)
+    payload = _authenticate_jwt()
 
     # List API keys for user
     core = get_core()
@@ -390,33 +341,8 @@ def create_api_key(data: APIKeyCreate):
     }
     ```
     """
-    # Extract Authorization header
-    auth_header = request.headers.get("Authorization")
-    if auth_header is None:
-        raise AuthenticationError(
-            "Missing authorization header",
-            {"expected": "Authorization: Bearer <token>"}
-        )
-
-    # Parse Bearer token
-    parts = auth_header.split(" ")
-    if len(parts) != 2 or parts[0].lower() != "bearer":
-        raise AuthenticationError(
-            "Invalid authorization header format",
-            {"expected": "Authorization: Bearer <token>"}
-        )
-
-    jwt_token = parts[1]
-
-    # Validate token and get user ID
-    try:
-        payload = token.validate_access_token(jwt_token)
-    except Exception as e:
-        logger.warning(f"Invalid token on /api-keys/: {e}")
-        raise AuthenticationError(
-            "Invalid or expired token",
-            {"token": jwt_token[:20] + "..."}
-        )
+    # Authenticate via JWT (API keys not allowed for creating API keys)
+    payload = _authenticate_jwt()
 
     # Create API key
     core = get_core()
@@ -461,33 +387,8 @@ def revoke_api_key(api_key_id: str):
     """
     from ..exceptions import ResourceNotFound
 
-    # Extract Authorization header
-    auth_header = request.headers.get("Authorization")
-    if auth_header is None:
-        raise AuthenticationError(
-            "Missing authorization header",
-            {"expected": "Authorization: Bearer <token>"}
-        )
-
-    # Parse Bearer token
-    parts = auth_header.split(" ")
-    if len(parts) != 2 or parts[0].lower() != "bearer":
-        raise AuthenticationError(
-            "Invalid authorization header format",
-            {"expected": "Authorization: Bearer <token>"}
-        )
-
-    jwt_token = parts[1]
-
-    # Validate token and get user ID
-    try:
-        payload = token.validate_access_token(jwt_token)
-    except Exception as e:
-        logger.warning(f"Invalid token on /api-keys/: {e}")
-        raise AuthenticationError(
-            "Invalid or expired token",
-            {"token": jwt_token[:20] + "..."}
-        )
+    # Authenticate via JWT (API keys not allowed for revoking API keys)
+    payload = _authenticate_jwt()
 
     # Revoke API key
     core = get_core()

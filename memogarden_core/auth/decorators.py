@@ -102,6 +102,64 @@ def _authenticate_request():
     )
 
 
+def _authenticate_jwt():
+    """
+    JWT-only authentication for sensitive operations.
+
+    Similar to _authenticate_request() but only accepts JWT tokens,
+    not API keys. Used for endpoints that manage API keys themselves,
+    to prevent API keys from creating or revoking other API keys.
+
+    Stores authenticated user information in flask.g:
+    - g.user_id: User ID (UUID)
+    - g.username: Username
+    - g.is_admin: Admin status
+    - g.auth_method: "jwt"
+
+    Returns:
+        TokenPayload: The validated JWT token payload
+
+    Raises:
+        AuthenticationError: If no valid JWT token provided
+    """
+    auth_header = request.headers.get("Authorization")
+
+    # Check for missing header
+    if auth_header is None:
+        raise AuthenticationError(
+            "Missing authorization header",
+            {"expected": "Authorization: Bearer <token>"}
+        )
+
+    # Parse Bearer token
+    parts = auth_header.split(" ")
+    if len(parts) != 2 or parts[0].lower() != "bearer":
+        raise AuthenticationError(
+            "Invalid authorization header format",
+            {"expected": "Authorization: Bearer <token>"}
+        )
+
+    jwt_token = parts[1]
+
+    # Validate token and get user ID
+    try:
+        payload = token.validate_access_token(jwt_token)
+    except Exception as e:
+        logger.warning(f"Invalid JWT token: {e}")
+        raise AuthenticationError(
+            "Invalid or expired token",
+            {"token": jwt_token[:20] + "..."}
+        )
+
+    # Store user info in flask.g for consistency with _authenticate_request()
+    g.user_id = payload.sub
+    g.username = payload.username
+    g.is_admin = payload.is_admin
+    g.auth_method = "jwt"
+
+    return payload
+
+
 # ============================================================================
 # Auth Required Decorator
 # ============================================================================
