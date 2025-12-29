@@ -208,8 +208,97 @@ def get_core(atomic: bool = False) -> Core:
 # DATABASE INITIALIZATION
 # ============================================================================
 
+EXPECTED_SCHEMA_VERSION = "20251229"
+
+
+def _get_current_schema_version(db: sqlite3.Connection) -> str | None:
+    """Get the current schema version from the database.
+
+    Args:
+        db: Database connection
+
+    Returns:
+        Current schema version string (e.g., "20251229") or None if not set
+    """
+    cursor = db.execute(
+        "SELECT value FROM _schema_metadata WHERE key = 'version'"
+    )
+    row = cursor.fetchone()
+    return row[0] if row else None
+
+
+def _apply_migration(db: sqlite3.Connection, from_version: str, to_version: str) -> None:
+    """Apply a migration from one schema version to another.
+
+    Args:
+        db: Database connection
+        from_version: Current schema version
+        to_version: Target schema version
+
+    Raises:
+        FileNotFoundError: If migration file doesn't exist
+        RuntimeError: If migration fails
+    """
+    migration_file = (
+        Path(__file__).parent.parent / "schema" / "migrations" /
+        f"migrate_{from_version}_to_{to_version}.sql"
+    )
+
+    if not migration_file.exists():
+        raise RuntimeError(
+            f"Migration from {from_version} to {to_version} required but file not found: {migration_file}"
+        )
+
+    with open(migration_file, "r") as f:
+        migration_sql = f.read()
+
+    try:
+        db.executescript(migration_sql)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise RuntimeError(f"Migration from {from_version} to {to_version} failed: {e}") from e
+
+
+def _run_migrations(db: sqlite3.Connection) -> None:
+    """Check schema version and apply migrations if needed.
+
+    Args:
+        db: Database connection (should be in a transaction)
+
+    Note:
+        This is a simple migration runner for development. For production,
+        consider implementing the full migration mechanism described in
+        plan/future/migration-mechanism.md
+    """
+    current_version = _get_current_schema_version(db)
+
+    if current_version is None:
+        # No version set - this should not happen in a properly initialized DB
+        raise RuntimeError("Database has _schema_metadata table but no version set")
+
+    if current_version == EXPECTED_SCHEMA_VERSION:
+        # Already at expected version, no migration needed
+        return
+
+    # For now, we only support one migration path
+    if current_version == "20251223" and EXPECTED_SCHEMA_VERSION == "20251229":
+        _apply_migration(db, current_version, EXPECTED_SCHEMA_VERSION)
+    elif current_version < EXPECTED_SCHEMA_VERSION:
+        # Skip migrations for now (would need multi-step migration in production)
+        # This allows development to continue without full migration support
+        pass
+    elif current_version > EXPECTED_SCHEMA_VERSION:
+        # Database is newer than code - this is OK (forward compatible)
+        pass
+
+
 def init_db():
-    """Initialize database by running schema.sql if not already initialized."""
+    """Initialize database by running schema.sql if not already initialized.
+
+    Also checks schema version and applies migrations if the database exists
+    but is at an older schema version.
+    """
     db_path = Path(settings.database_path)
     db_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -219,7 +308,8 @@ def init_db():
             "SELECT name FROM sqlite_master WHERE type='table' AND name='_schema_metadata'"
         )
         if cursor.fetchone():
-            # Database already initialized, skip
+            # Database exists - check if migration is needed
+            _run_migrations(db)
             return
 
         # Fresh database - apply current schema
