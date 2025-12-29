@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     jwt_secret_key: str = "change-me-in-production-use-env-var"
     jwt_expiry_days: int = 30
 
+    # Security Configuration
+    # For testing: bypass localhost-only checks (e.g., admin registration)
+    bypass_localhost_check: bool = False
+
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=False

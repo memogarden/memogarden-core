@@ -27,3 +27,9 @@ class DatabaseError(MemoGardenError):
     """Raised when a database operation fails."""
 
     pass
+
+
+class AuthenticationError(MemoGardenError):
+    """Raised when authentication fails (invalid credentials, token issues)."""
+
+    pass

@@ -6,7 +6,7 @@ from flask_cors import CORS
 
 from .config import settings
 from .db import init_db
-from .exceptions import ResourceNotFound, ValidationError, MemoGardenError
+from .exceptions import ResourceNotFound, ValidationError, MemoGardenError, AuthenticationError
 
 # Configure logging
 logging.basicConfig(
@@ -29,6 +29,19 @@ def initialize_database():
     try:
         init_db()
         logger.info("Database initialized successfully")
+
+        # Check if admin user exists
+        from .auth import service
+        from .db import _create_connection
+
+        conn = _create_connection()
+        try:
+            if not service.has_admin_user(conn):
+                logger.warning(
+                    "No admin user exists. Visit http://localhost:5000/admin/register to setup"
+                )
+        finally:
+            conn.close()
     except Exception as e:
         logger.error(f"Database initialization failed: {e}")
         raise
@@ -68,6 +81,20 @@ def handle_validation_error(error):
     return jsonify(response), 400
 
 
+@app.errorhandler(AuthenticationError)
+def handle_authentication_error(error):
+    """Handle AuthenticationError exceptions."""
+    response = {
+        "error": {
+            "type": "AuthenticationError",
+            "message": error.message
+        }
+    }
+    if error.details:
+        response["error"]["details"] = error.details
+    return jsonify(response), 401
+
+
 @app.errorhandler(MemoGardenError)
 def handle_memo_garden_error(error):
     """Handle generic MemoGardenError exceptions."""
@@ -103,11 +130,15 @@ def health():
 
 # Register API blueprints
 from .api.v1.transactions import transactions_bp
+from .api.auth import auth_bp
 
 app.register_blueprint(
     transactions_bp,
     url_prefix=f"{settings.api_v1_prefix}/transactions"
 )
+
+# Auth endpoints (top-level, not under /api/v1/)
+app.register_blueprint(auth_bp)
 
 
 if __name__ == "__main__":
