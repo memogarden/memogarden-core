@@ -17,6 +17,6 @@ Auth endpoints (top-level routes, not under /api/v1/):
 - DELETE /api-keys/:id - Revoke API key
 """
 
-from . import schemas
+from . import schemas, token
 
-__all__ = ["schemas"]
+__all__ = ["schemas", "token"]

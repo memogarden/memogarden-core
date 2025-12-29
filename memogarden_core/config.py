@@ -11,6 +11,10 @@ class Settings(BaseSettings):
     cors_origins: list[str] = ["http://localhost:3000"]
     default_currency: str = "SGD"
 
+    # JWT Configuration
+    jwt_secret_key: str = "change-me-in-production-use-env-var"
+    jwt_expiry_days: int = 30
+
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=False
