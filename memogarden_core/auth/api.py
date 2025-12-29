@@ -1,23 +1,25 @@
-"""Authentication endpoints for MemoGarden Core.
+"""Authentication API endpoints for MemoGarden Core.
 
-These endpoints handle user authentication:
+These endpoints handle user authentication and return JSON responses:
 - Admin registration (localhost only, one-time)
 - User login and logout
 - User profile retrieval
+- API key management
 
 All endpoints return JSON responses. Admin registration is only accessible
 from localhost and only when no users exist in the database.
 """
 
 import logging
-from flask import Blueprint, jsonify, request, render_template_string
 import sqlite3
 
-from ..db import get_core
-from ..auth import service, token
-from ..auth.schemas import UserCreate, UserLogin, TokenResponse, AdminRegistrationResponse
+from flask import Blueprint, jsonify, request
+
 from ..api.validation import validate_request
+from ..db import get_core
 from ..exceptions import AuthenticationError
+from . import api_keys, service, token
+from .schemas import AdminRegistrationResponse, APIKeyCreate, TokenResponse, UserCreate, UserLogin
 
 logger = logging.getLogger(__name__)
 
@@ -29,104 +31,6 @@ auth_bp = Blueprint("auth", __name__)
 # ============================================================================
 # Admin Registration (localhost only, one-time)
 # ============================================================================
-
-ADMIN_REGISTER_HTML = """
-<!DOCTYPE html>
-<html>
-<head>
-    <title>MemoGarden - Admin Setup</title>
-    <style>
-        body {
-            font-family: system-ui, -apple-system, sans-serif;
-            max-width: 500px;
-            margin: 50px auto;
-            padding: 20px;
-        }
-        h1 { color: #333; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; }
-        input {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            box-sizing: border-box;
-        }
-        button {
-            background: #007bff;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-        button:hover { background: #0056b3; }
-        .error {
-            color: #dc3545;
-            padding: 10px;
-            background: #f8d7da;
-            border-radius: 4px;
-            margin-bottom: 15px;
-        }
-        .info {
-            color: #004085;
-            padding: 10px;
-            background: #cce5ff;
-            border-radius: 4px;
-            margin-bottom: 15px;
-        }
-        .hint {
-            font-size: 14px;
-            color: #666;
-            margin-top: 5px;
-        }
-    </style>
-</head>
-<body>
-    <h1>MemoGarden Admin Setup</h1>
-
-    {% if message %}
-    <div class="info">{{ message }}</div>
-    {% endif %}
-
-    {% if error %}
-    <div class="error">{{ error }}</div>
-    {% endif %}
-
-    <form method="POST" action="/admin/register">
-        <div class="form-group">
-            <label for="username">Username</label>
-            <input
-                type="text"
-                id="username"
-                name="username"
-                required
-                pattern="[A-Za-z0-9_-]+"
-                title="Letters, numbers, underscores, and hyphens only"
-                autocomplete="username"
-            />
-            <div class="hint">Letters, numbers, underscores, and hyphens only</div>
-        </div>
-
-        <div class="form-group">
-            <label for="password">Password</label>
-            <input
-                type="password"
-                id="password"
-                name="password"
-                required
-                minlength="8"
-                autocomplete="new-password"
-            />
-            <div class="hint">Minimum 8 characters, must contain at least one letter and one digit</div>
-        </div>
-
-        <button type="submit">Create Admin Account</button>
-    </form>
-</body>
-</html>
-"""
 
 
 def _is_localhost_request() -> bool:
@@ -143,54 +47,6 @@ def _is_localhost_request() -> bool:
 
     remote_addr = request.remote_addr or ""
     return remote_addr in {"127.0.0.1", "::1", "localhost"}
-
-
-@auth_bp.route("/admin/register", methods=["GET"])
-def admin_register_page():
-    """
-    Display admin registration page (localhost only).
-
-    This page is only accessible:
-    1. From localhost (127.0.0.1, ::1)
-    2. When no users exist in the database
-
-    Returns:
-        HTML page with admin registration form
-
-    Error Responses:
-        403: If not localhost or admin already exists
-    """
-    # Check localhost access
-    if not _is_localhost_request():
-        logger.warning(f"Admin registration attempt from non-localhost: {request.remote_addr}")
-        return jsonify({
-            "error": {
-                "type": "Forbidden",
-                "message": "Admin registration is only accessible from localhost"
-            }
-        }), 403
-
-    # Check if any users exist
-    core = get_core()
-    try:
-        if service.has_admin_user(core._conn):
-            logger.warning("Admin registration attempted when admin already exists")
-            return render_template_string(
-                ADMIN_REGISTER_HTML,
-                error="Admin account already exists. Registration is disabled.",
-                message=None
-            )
-
-        return render_template_string(ADMIN_REGISTER_HTML, error=None, message=None)
-    except Exception as e:
-        logger.error(f"Error checking admin status: {e}")
-        return jsonify({
-            "error": {
-                "type": "InternalServerError",
-                "message": "Failed to check admin status"
-            }
-        }), 500
-    # Connection closes automatically via __del__
 
 
 @auth_bp.route("/admin/register", methods=["POST"])
@@ -264,7 +120,7 @@ def admin_register(data: UserCreate):
             ).model_dump()
         ), 201
 
-    except sqlite3.IntegrityError as e:
+    except sqlite3.IntegrityError:
         logger.warning(f"Admin registration failed (username exists): {data.username}")
         raise AuthenticationError(
             "Username already exists",
@@ -444,4 +300,236 @@ def get_current_user():
         )
 
     return jsonify(user.model_dump()), 200
+    # Connection closes automatically via __del__
+
+
+# ============================================================================
+# API Key Management Endpoints
+# ============================================================================
+
+
+@auth_bp.route("/api-keys/", methods=["GET"])
+def list_api_keys():
+    """
+    List all API keys for the authenticated user.
+
+    Requires authentication via JWT token.
+    Full API keys are never shown in the list (only prefix).
+
+    Returns:
+        List of API key responses (without full keys)
+
+    Raises:
+        AuthenticationError: If token is missing or invalid
+
+    Example request:
+    ```
+    GET /api-keys/
+    Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+    ```
+
+    Example response:
+    ```json
+    [
+        {
+            "id": "660e8400-e29b-41d4-a716-446655440000",
+            "name": "claude-code",
+            "prefix": "mg_sk_agent_",
+            "expires_at": null,
+            "created_at": "2025-12-29T10:30:00Z",
+            "last_seen": "2025-12-29T15:45:00Z",
+            "revoked_at": null
+        }
+    ]
+    ```
+    """
+    # Extract Authorization header
+    auth_header = request.headers.get("Authorization")
+    if auth_header is None:
+        raise AuthenticationError(
+            "Missing authorization header",
+            {"expected": "Authorization: Bearer <token>"}
+        )
+
+    # Parse Bearer token
+    parts = auth_header.split(" ")
+    if len(parts) != 2 or parts[0].lower() != "bearer":
+        raise AuthenticationError(
+            "Invalid authorization header format",
+            {"expected": "Authorization: Bearer <token>"}
+        )
+
+    jwt_token = parts[1]
+
+    # Validate token and get user ID
+    try:
+        payload = token.validate_access_token(jwt_token)
+    except Exception as e:
+        logger.warning(f"Invalid token on /api-keys/: {e}")
+        raise AuthenticationError(
+            "Invalid or expired token",
+            {"token": jwt_token[:20] + "..."}
+        )
+
+    # List API keys for user
+    core = get_core()
+    api_keys_list = api_keys.list_api_keys(core._conn, payload.sub)
+
+    return jsonify([key.model_dump() for key in api_keys_list]), 200
+    # Connection closes automatically via __del__
+
+
+@auth_bp.route("/api-keys/", methods=["POST"])
+@validate_request
+def create_api_key(data: APIKeyCreate):
+    """
+    Create a new API key for the authenticated user.
+
+    Requires authentication via JWT token.
+    The full API key is only shown once in the response.
+
+    Args:
+        data: API key creation data with name and optional expires_at
+
+    Returns:
+        Created API key response with full key (only shown once)
+
+    Raises:
+        AuthenticationError: If token is missing or invalid
+
+    Example request:
+    ```json
+    {
+        "name": "claude-code",
+        "expires_at": "2026-12-31T23:59:59Z"
+    }
+    ```
+
+    Example response:
+    ```json
+    {
+        "id": "660e8400-e29b-41d4-a716-446655440000",
+        "name": "claude-code",
+        "key": "mg_sk_agent_9a2b8c7d...",
+        "prefix": "mg_sk_agent_",
+        "expires_at": "2026-12-31T23:59:59Z",
+        "created_at": "2025-12-29T10:30:00Z",
+        "last_seen": null,
+        "revoked_at": null
+    }
+    ```
+    """
+    # Extract Authorization header
+    auth_header = request.headers.get("Authorization")
+    if auth_header is None:
+        raise AuthenticationError(
+            "Missing authorization header",
+            {"expected": "Authorization: Bearer <token>"}
+        )
+
+    # Parse Bearer token
+    parts = auth_header.split(" ")
+    if len(parts) != 2 or parts[0].lower() != "bearer":
+        raise AuthenticationError(
+            "Invalid authorization header format",
+            {"expected": "Authorization: Bearer <token>"}
+        )
+
+    jwt_token = parts[1]
+
+    # Validate token and get user ID
+    try:
+        payload = token.validate_access_token(jwt_token)
+    except Exception as e:
+        logger.warning(f"Invalid token on /api-keys/: {e}")
+        raise AuthenticationError(
+            "Invalid or expired token",
+            {"token": jwt_token[:20] + "..."}
+        )
+
+    # Create API key
+    core = get_core()
+    api_key = api_keys.create_api_key(core._conn, payload.sub, data)
+    core._conn.commit()
+
+    logger.info(f"API key created: {api_key.name} for user {payload.sub}")
+
+    return jsonify(api_key.model_dump()), 201
+
+
+@auth_bp.route("/api-keys/<api_key_id>", methods=["DELETE"])
+def revoke_api_key(api_key_id: str):
+    """
+    Revoke an API key for the authenticated user (soft delete).
+
+    Requires authentication via JWT token.
+    Sets the revoked_at timestamp to deactivate the key.
+
+    Args:
+        api_key_id: API key UUID to revoke
+
+    Returns:
+        Success message
+
+    Raises:
+        AuthenticationError: If token is missing or invalid
+        ResourceNotFound: If API key doesn't exist or doesn't belong to user
+
+    Example request:
+    ```
+    DELETE /api-keys/660e8400-e29b-41d4-a716-446655440000
+    Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+    ```
+
+    Example response:
+    ```json
+    {
+        "message": "API key revoked successfully"
+    }
+    ```
+    """
+    from ..exceptions import ResourceNotFound
+
+    # Extract Authorization header
+    auth_header = request.headers.get("Authorization")
+    if auth_header is None:
+        raise AuthenticationError(
+            "Missing authorization header",
+            {"expected": "Authorization: Bearer <token>"}
+        )
+
+    # Parse Bearer token
+    parts = auth_header.split(" ")
+    if len(parts) != 2 or parts[0].lower() != "bearer":
+        raise AuthenticationError(
+            "Invalid authorization header format",
+            {"expected": "Authorization: Bearer <token>"}
+        )
+
+    jwt_token = parts[1]
+
+    # Validate token and get user ID
+    try:
+        payload = token.validate_access_token(jwt_token)
+    except Exception as e:
+        logger.warning(f"Invalid token on /api-keys/: {e}")
+        raise AuthenticationError(
+            "Invalid or expired token",
+            {"token": jwt_token[:20] + "..."}
+        )
+
+    # Revoke API key
+    core = get_core()
+    success = api_keys.revoke_api_key(core._conn, api_key_id, payload.sub)
+    core._conn.commit()
+
+    if not success:
+        raise ResourceNotFound(
+            "API key not found",
+            {"api_key_id": api_key_id}
+        )
+
+    logger.info(f"API key revoked: {api_key_id} by user {payload.sub}")
+
+    return jsonify({"message": "API key revoked successfully"}), 200
     # Connection closes automatically via __del__

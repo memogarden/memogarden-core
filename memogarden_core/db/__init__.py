@@ -33,10 +33,11 @@ All entity IDs are auto-generated UUIDs. This design choice:
 5. Both entity.create() and transaction.create() always generate new IDs
 """
 
+import sqlite3
 from contextvars import ContextVar
 from pathlib import Path
 from typing import TYPE_CHECKING
-import sqlite3
+
 from ..config import settings
 
 # Thread-local storage for atomic Core

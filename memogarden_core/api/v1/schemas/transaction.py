@@ -11,6 +11,7 @@ Note: Accounts and categories are labels (strings), not relational entities.
 """
 
 from datetime import date, datetime
+
 from pydantic import BaseModel, ConfigDict, Field
 
 

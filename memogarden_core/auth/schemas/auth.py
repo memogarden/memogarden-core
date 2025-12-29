@@ -13,11 +13,11 @@ Password requirements:
 - Recommended: special characters and mixed case for better security
 """
 
+import re
 from datetime import datetime
 from typing import Annotated
-from pydantic import BaseModel, ConfigDict, Field, field_validator
-import re
 
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 # ============================================================================
 # User Schemas

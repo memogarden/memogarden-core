@@ -5,7 +5,7 @@ and ISO 8601 strings. All date/time operations should use these functions
 to ensure consistency and make usage clear across the codebase.
 """
 
-from datetime import datetime, date, UTC, timedelta
+from datetime import UTC, date, datetime
 
 
 def to_timestamp(dt: datetime) -> str:

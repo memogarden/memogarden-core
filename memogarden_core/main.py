@@ -1,12 +1,16 @@
 """Flask application entry point."""
 
 import logging
+
 from flask import Flask, jsonify
 from flask_cors import CORS
 
+from .api.v1 import api_v1_bp
+from .auth import api as auth_api
+from .auth import ui as auth_ui
 from .config import settings
 from .db import init_db
-from .exceptions import ResourceNotFound, ValidationError, MemoGardenError, AuthenticationError
+from .exceptions import AuthenticationError, MemoGardenError, ResourceNotFound, ValidationError
 
 # Configure logging
 logging.basicConfig(
@@ -129,16 +133,14 @@ def health():
 
 
 # Register API blueprints
-from .api.v1.transactions import transactions_bp
-from .api.auth import auth_bp
+# ApiV1 blueprint (includes transactions and future v1 resources)
+app.register_blueprint(api_v1_bp)
 
-app.register_blueprint(
-    transactions_bp,
-    url_prefix=f"{settings.api_v1_prefix}/transactions"
-)
+# Auth API endpoints (JSON responses, top-level routes)
+app.register_blueprint(auth_api.auth_bp)
 
-# Auth endpoints (top-level, not under /api/v1/)
-app.register_blueprint(auth_bp)
+# Auth UI pages (HTML responses, top-level routes)
+app.register_blueprint(auth_ui.auth_views_bp)
 
 
 if __name__ == "__main__":

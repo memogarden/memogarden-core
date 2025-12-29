@@ -4,7 +4,8 @@ These types define the fundamental data representations used throughout
 the system, ensuring consistency between API, database, and business logic.
 """
 
-from datetime import datetime, date
+from datetime import date, datetime
+
 from ..utils import isodatetime
 
 

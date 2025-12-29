@@ -63,7 +63,9 @@ now_ts = isodatetime.now_unix()
 
 ### `utils/uid` - UUID Generation
 
-**All UUID generation MUST use `uid.generate_uuid()`:**
+**DEPRECATED:** For new code, use `utils.secret.generate_uuid()` instead (see below).
+
+This module is maintained for backward compatibility:
 
 ```python
 from memogarden_core.utils import uid
@@ -71,16 +73,47 @@ from memogarden_core.utils import uid
 user_id = uid.generate_uuid()  # "550e8400-e29b-41d4-a716-446655440000"
 ```
 
-**DO NOT import `uuid4` directly:**
-```python
-# ❌ AVOID - direct uuid import
-from uuid import uuid4
-user_id = str(uuid4())
+### `utils/secret` - Secret Generation
 
-# ✅ PREFERRED - use uid utility
-from memogarden_core.utils import uid
-user_id = uid.generate_uuid()
+**ALL secret and UUID generation MUST use the `secret` module:**
+
+```python
+from memogarden_core.utils import secret
+
+# Generate UUID for entities
+user_id = secret.generate_uuid()
+api_key_id = secret.generate_uuid()
+
+# Generate API keys
+api_key = secret.generate_api_key()  # "mg_sk_agent_abc123..."
+
+# Generate random tokens (password reset, etc.)
+token = secret.generate_token()  # 64-character hex token
+short_token = secret.generate_token(num_bytes=16)  # 32-character hex token
+
+# Generate random passwords
+password = secret.generate_password()  # 16 characters
+short_password = secret.generate_password(length=12)  # 12 characters
 ```
+
+**DO NOT import `uuid4` or `secrets` directly:**
+```python
+# ❌ AVOID - direct uuid/secrets imports
+from uuid import uuid4
+import secrets
+user_id = str(uuid4())
+api_key = secrets.token_hex(32)
+
+# ✅ PREFERRED - use secret utility
+from memogarden_core.utils import secret
+user_id = secret.generate_uuid()
+api_key = secret.generate_api_key()
+```
+
+This approach:
+- Confines third-party crypto imports (`uuid`, `secrets`) to one module
+- Makes it easy to audit all secret generation in the codebase
+- Provides a single place to update secret generation algorithms
 
 ---
 
@@ -92,11 +125,12 @@ For first-party modules (`utils.*`, `db.*`, etc.), use **module-level imports**:
 
 ```python
 # ✅ PREFERRED
-from memogarden_core.utils import isodatetime, uid
+from memogarden_core.utils import isodatetime, secret
 from memogarden_core.db import get_core
 
 timestamp = isodatetime.now()
-uuid = uid.generate_uuid()
+uuid = secret.generate_uuid()
+api_key = secret.generate_api_key()
 ```
 
 This provides:

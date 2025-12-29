@@ -14,11 +14,11 @@ All transaction IDs are auto-generated via entity.create(). This design:
 
 import sqlite3
 from datetime import date
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-from . import query
-from ..utils import isodatetime
 from ..exceptions import ResourceNotFound
+from ..utils import isodatetime
+from . import query
 
 if TYPE_CHECKING:
     from . import Core

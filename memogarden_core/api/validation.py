@@ -5,10 +5,12 @@ Assume API is used by human/agent stakeholders. Provide clear, detailed
 validation error messages. No need to obscure information for "security".
 """
 
-import inspect
 import functools
+import inspect
+
 from flask import request
 from pydantic import BaseModel, ValidationError
+
 from ..exceptions import ValidationError as MGValidationError
 
 
@@ -70,7 +72,7 @@ def _format_validation_errors(pydantic_errors: list[dict]) -> list[dict]:
     """
     error_details = []
     for error in pydantic_errors:
-        loc = " -> ".join(str(l) for l in error["loc"])
+        loc = " -> ".join(str(item) for item in error["loc"])
         error_details.append({
             "field": loc,
             "message": error["msg"],

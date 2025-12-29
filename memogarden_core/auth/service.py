@@ -9,13 +9,12 @@ Confines bcrypt dependency to this module only - all password operations
 go through this service's public API.
 """
 
-import bcrypt
 import sqlite3
-from typing import Literal
 
-from memogarden_core.utils import uid, isodatetime
+import bcrypt
+
 from memogarden_core.auth.schemas import UserCreate, UserResponse
-
+from memogarden_core.utils import isodatetime, uid
 
 # ============================================================================
 # Password Hashing and Verification

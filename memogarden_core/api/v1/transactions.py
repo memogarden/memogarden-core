@@ -16,18 +16,14 @@ Architecture Notes:
 - Parameterized queries to prevent SQL injection
 """
 
-from flask import Blueprint, request, jsonify
-from pydantic import ValidationError
+from flask import Blueprint, jsonify, request
 
-from .schemas.transaction import TransactionCreate, TransactionUpdate, TransactionResponse
-from ...exceptions import ResourceNotFound, ValidationError as MGValidationError
-from ...utils import isodatetime
 from ...db import get_core
 from ..validation import validate_request
-
+from .schemas.transaction import TransactionCreate, TransactionUpdate
 
 # Create Blueprint
-transactions_bp = Blueprint('transactions', __name__)
+transactions_bp = Blueprint('transactions', __name__, url_prefix='/transactions')
 
 
 def _row_to_transaction_response(row) -> dict:

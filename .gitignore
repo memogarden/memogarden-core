@@ -38,7 +38,6 @@ poetry.lock
 .idea/
 
 # VS Code
-.vscode/
 
 # Testing
 .pytest_cache/
@@ -62,3 +61,4 @@ data/*.db-shm
 
 # Logs
 *.log
+.venv/

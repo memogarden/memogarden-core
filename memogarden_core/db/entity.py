@@ -16,8 +16,9 @@ All entity IDs are auto-generated UUIDs. This design choice:
 """
 
 import sqlite3
-from ..utils import uid, isodatetime
+
 from ..exceptions import ResourceNotFound
+from ..utils import isodatetime, uid
 
 
 class EntityOperations:
