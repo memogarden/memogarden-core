@@ -1,7 +1,6 @@
 """Comprehensive API tests for transaction CRUD endpoints."""
 
 import pytest
-import sqlite3
 from datetime import date, datetime, UTC
 from uuid import uuid4
 
@@ -74,15 +73,7 @@ def setup_database(client):
 
     yield
 
-    # Cleanup - use a new connection since the setup one is closed
-    try:
-        with get_core(atomic=True) as core:
-            core._conn.execute("DELETE FROM transactions")
-            core._conn.execute("DELETE FROM entity")
-    except sqlite3.OperationalError:
-        # Connection may be closed or locked during teardown
-        # This is fine - the test database will be cleaned up by the fixture
-        pass
+    # No cleanup needed - client fixture creates fresh temp DB for each test
 
 
 class TestCreateTransaction:

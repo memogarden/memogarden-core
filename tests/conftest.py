@@ -13,6 +13,20 @@ from memogarden_core.config import settings
 from memogarden_core.auth import schemas, service, token as auth_token, api_keys
 
 
+@pytest.fixture(scope="session", autouse=True)
+def test_bcrypt_work_factor():
+    """Set lower bcrypt work factor for faster tests.
+
+    This runs once per session and sets the work factor to 4 (much faster
+    than production's 12, but still tests bcrypt functionality).
+    """
+    original = settings.bcrypt_work_factor
+    settings.bcrypt_work_factor = 4
+    yield
+    # Restore original after all tests complete
+    settings.bcrypt_work_factor = original
+
+
 @pytest.fixture
 def test_db():
     """Create in-memory test database with schema."""
@@ -151,6 +165,9 @@ def authenticated_client():
     - client: Flask test client
     - user: UserResponse schema for the created user
     - auth_headers: dict with Authorization header
+
+    Note: Uses bcrypt_work_factor=4 for fast test execution (set by
+    test_bcrypt_work_factor session-scoped fixture).
     """
     # Create temp file database
     fd, db_path = tempfile.mkstemp(suffix=".db")
@@ -165,7 +182,7 @@ def authenticated_client():
         from memogarden_core.db import init_db, get_core
         init_db()
 
-        # Create a test user in the database
+        # Create a test user in the database (fast with work factor 4)
         core = get_core()
         password = "TestPass123"
         user_data = schemas.UserCreate(username="testuser", password=password)
@@ -179,10 +196,10 @@ def authenticated_client():
             is_admin=user.is_admin,
             created_at=user.created_at
         )
-        jwt_token = auth_token.generate_access_token(user_response)
+        jwt_token_str = auth_token.generate_access_token(user_response)
 
         # Create auth headers
-        auth_headers = {"Authorization": f"Bearer {jwt_token}"}
+        auth_headers = {"Authorization": f"Bearer {jwt_token_str}"}
 
         # Create test client
         app.config['TESTING'] = True

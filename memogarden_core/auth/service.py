@@ -14,6 +14,7 @@ import sqlite3
 import bcrypt
 
 from memogarden_core.auth.schemas import UserCreate, UserResponse
+from memogarden_core.config import settings
 from memogarden_core.utils import isodatetime, uid
 
 # ============================================================================
@@ -21,9 +22,12 @@ from memogarden_core.utils import isodatetime, uid
 # ============================================================================
 
 
-# Bcrypt work factor (higher = more secure but slower)
-# 12 is a good balance for security and performance (default is 10)
-BCRYPT_WORK_FACTOR = 12
+def _get_bcrypt_work_factor() -> int:
+    """Get bcrypt work factor from config.
+
+    Reads from settings each time to allow test fixture to override.
+    """
+    return settings.bcrypt_work_factor
 
 
 def hash_password(password: str) -> str:
@@ -46,7 +50,8 @@ def hash_password(password: str) -> str:
     ```
     """
     password_bytes = password.encode("utf-8")
-    salt = bcrypt.gensalt(rounds=BCRYPT_WORK_FACTOR)
+    work_factor = _get_bcrypt_work_factor()
+    salt = bcrypt.gensalt(rounds=work_factor)
     hashed = bcrypt.hashpw(password_bytes, salt)
     return hashed.decode("utf-8")
 

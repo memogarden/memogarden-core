@@ -19,6 +19,11 @@ class Settings(BaseSettings):
     # For testing: bypass localhost-only checks (e.g., admin registration)
     bypass_localhost_check: bool = False
 
+    # Bcrypt work factor (higher = more secure but slower)
+    # 12 is a good balance for security and performance (default is 10)
+    # For tests, use 4 for faster execution while maintaining functionality
+    bcrypt_work_factor: int = 12
+
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=False
