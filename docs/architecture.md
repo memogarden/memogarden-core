@@ -52,11 +52,69 @@ All entity IDs are auto-generated UUID v4 strings. This design:
 3. Ensures UUID v4 format compliance with collision retry (3 attempts)
 4. Simplifies the API - users don't need to manage ID creation
 
-**API:**
-- `EntityOperations.create(entity_type, group_id, derived_from)` → returns auto-generated UUID
-- `TransactionOperations.create(amount, transaction_date, ...)` → creates entity with auto-generated ID
+**UUID Format:**
+- **Database storage**: Plain UUID v4 (e.g., `a1b2c3d4-e5f6-7890-abcd-ef1234567890`)
+- **API presentation**: Prefixed UUIDs for disambiguation
+  - **Core Entities**: `entity_a1b2c3d4-e5f6-7890-abcd-ef1234567890`
+  - **Soil Items** (future): `item_xyz789-0123-4567-89ab-cdef01234567890`
 
-### Module-Level Import Convention
+**Rationale:**
+- **Separation of concerns**: Database generates plain UUIDs, presentation layer adds prefixes
+- **Clear provenance**: `entity_` prefix indicates mutable shared belief, `item_` indicates immutable fact
+- **No collision risk**: Different prefixes prevent UUID conflicts across systems
+- **One-way bridge**: Agents create Entities based on Items (never reverse)
+
+**API:**
+- `EntityOperations.create(entity_type, group_id, derived_from)` → returns `entity_`-prefixed UUID
+- `TransactionOperations.create(amount, transaction_date, ...)` → creates entity with `entity_`-prefixed UUID
+
+**Note:** Soil implementation is DEFERRED for Budget MVP. All current entities use `entity_` prefix only.
+
+---
+
+### Entity vs Item Architecture
+
+MemoGarden uses two distinct types of data with different storage and mutability characteristics:
+
+| Aspect | **Entities** (Core) | **Items** (Soil, future) |
+|--------|-------------------|----------------------|
+| **Location** | Core database (`data/memogarden.db`) | Soil storage (`soil/`) |
+| **Mutability** | Mutable (shared beliefs) | Immutable (archival facts) |
+| **Examples** | Transactions, Recurrences, Users | Emails, PDFs, statements |
+| **UUID Format** | `entity_<uuid4>` (API presentation) | `item_<uuid4>` (future) |
+| **Storage** | Plain UUID v4 in database | Plain UUID v4 + JSON metadata in SQLite |
+| **Lifecycle** | Can be updated/corrected | Append-only, never modified |
+| **Bridge** | N/A (current state) | Items → Entities via agents (future) |
+
+**Key Principles:**
+- **Separation of concerns**: Database generates plain UUIDs, prefixes added at API layer
+- **Clear provenance**: Prefixes immediately indicate mutable vs immutable data
+- **No migration path**: Entities never become Items (they serve different purposes)
+- **One-way bridge**: Agents will create Entities based on immutable Items (never reverse)
+
+---
+
+### Centralized Operations
+
+All datetime/UUID operations go through centralized utilities:
+
+**`utils/isodatetime.py`:**
+- `now()` - Get current UTC timestamp as ISO 8601 string
+- `to_timestamp(dt)` - Convert datetime to ISO 8601 UTC timestamp
+- `to_datetime(ts)` - Convert ISO 8601 timestamp to datetime
+- `to_datestring(d)` - Convert date to ISO 8601 date string
+
+**`utils/uid.py`:**
+- `generate_uuid()` - Generate random UUID v4 as string (ONLY place that imports uuid4)
+
+**`utils/recurrence.py`:**
+- `validate_rrule()` - Validate iCal RRULE strings
+- `generate_occurrences()` - Generate occurrence datetimes from RRULE
+- `get_next_occurrence()` - Get next occurrence after a datetime
+- `generate_rrulestr()` - Create RRULE from parameters
+- **All python-dateutil imports confined to this module**
+
+**Rationale:** Ensures consistency and makes usage clear across the codebase.
 
 For first-party modules (`db.*`, `utils.*`, etc.), use **module-level imports**:
 
@@ -196,5 +254,5 @@ All exceptions inherit from base `MemoGardenError`:
 
 ---
 
-**Last Updated:** 2025-12-24
+**Last Updated:** 2025-12-30
 **For:** MemoGarden Core maintainers
