@@ -1,6 +1,6 @@
 """Pydantic schemas for API validation.
 
-Transaction schemas are defined here for API v1.
+Transaction and recurrence schemas are defined here for API v1.
 Auth schemas are imported from the auth module for use in API endpoints.
 """
 
@@ -19,6 +19,12 @@ from memogarden_core.auth.schemas import (
     UserResponse,
 )
 
+from .recurrence import (
+    RecurrenceBase,
+    RecurrenceCreate,
+    RecurrenceResponse,
+    RecurrenceUpdate,
+)
 from .transaction import (
     TransactionBase,
     TransactionCreate,
@@ -31,6 +37,10 @@ __all__ = [
     "TransactionCreate",
     "TransactionUpdate",
     "TransactionResponse",
+    "RecurrenceBase",
+    "RecurrenceCreate",
+    "RecurrenceUpdate",
+    "RecurrenceResponse",
     # Auth schemas (re-exported from memogarden_core.auth.schemas)
     "UserBase",
     "UserCreate",

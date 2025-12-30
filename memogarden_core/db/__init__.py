@@ -45,6 +45,7 @@ _core_context: ContextVar["Core"] = ContextVar("_core_context", default=None)
 
 if TYPE_CHECKING:
     from .entity import EntityOperations
+    from .recurrence import RecurrenceOperations
     from .transaction import TransactionOperations
 
 
@@ -72,6 +73,7 @@ class Core:
         self._atomic = atomic
         self._entity_ops = None
         self._transaction_ops = None
+        self._recurrence_ops = None
 
     @property
     def entity(self) -> "EntityOperations":
@@ -100,6 +102,22 @@ class Core:
             # Pass self (Core) for entity coordination
             self._transaction_ops = TransactionOperations(self._conn, core=self)
         return self._transaction_ops
+
+    @property
+    def recurrence(self) -> "RecurrenceOperations":
+        """Recurrence operations.
+
+        Lazy-loaded to avoid circular import issues.
+        Operations are created on first access and cached.
+
+        Note: Passes self (Core) to RecurrenceOperations so it can
+        coordinate entity registry operations automatically.
+        """
+        if self._recurrence_ops is None:
+            from .recurrence import RecurrenceOperations
+            # Pass self (Core) for entity coordination
+            self._recurrence_ops = RecurrenceOperations(self._conn, core=self)
+        return self._recurrence_ops
 
     def __enter__(self) -> "Core":
         """Enter context manager for atomic transaction.
@@ -209,7 +227,7 @@ def get_core(atomic: bool = False) -> Core:
 # DATABASE INITIALIZATION
 # ============================================================================
 
-EXPECTED_SCHEMA_VERSION = "20251229"
+EXPECTED_SCHEMA_VERSION = "20251230"
 
 
 def _get_current_schema_version(db: sqlite3.Connection) -> str | None:
@@ -282,8 +300,10 @@ def _run_migrations(db: sqlite3.Connection) -> None:
         # Already at expected version, no migration needed
         return
 
-    # For now, we only support one migration path
+    # For now, we only support direct migration paths
     if current_version == "20251223" and EXPECTED_SCHEMA_VERSION == "20251229":
+        _apply_migration(db, current_version, EXPECTED_SCHEMA_VERSION)
+    elif current_version == "20251229" and EXPECTED_SCHEMA_VERSION == "20251230":
         _apply_migration(db, current_version, EXPECTED_SCHEMA_VERSION)
     elif current_version < EXPECTED_SCHEMA_VERSION:
         # Skip migrations for now (would need multi-step migration in production)

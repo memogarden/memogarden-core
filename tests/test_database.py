@@ -486,16 +486,16 @@ class TestMigration:
         """Test that migration is applied when database is at old version."""
         from memogarden_core.db import _run_migrations, EXPECTED_SCHEMA_VERSION
 
-        # Simulate old schema by updating version
+        # Simulate old schema by updating version (use previous version)
         test_db.execute(
             "UPDATE _schema_metadata SET value = ? WHERE key = 'version'",
-            ("20251223",)
+            ("20251229",)
         )
         test_db.commit()
 
         # Verify old version
         cursor = test_db.execute("SELECT value FROM _schema_metadata WHERE key = 'version'")
-        assert cursor.fetchone()[0] == "20251223"
+        assert cursor.fetchone()[0] == "20251229"
 
         # Run migrations
         _run_migrations(test_db)
@@ -505,13 +505,12 @@ class TestMigration:
         version = cursor.fetchone()[0]
         assert version == EXPECTED_SCHEMA_VERSION
 
-        # Verify new tables exist
+        # Verify new table exists
         cursor = test_db.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('users', 'api_keys')"
+            "SELECT name FROM sqlite_master WHERE type='table' AND name = 'recurrences'"
         )
         tables = [row[0] for row in cursor.fetchall()]
-        assert "users" in tables
-        assert "api_keys" in tables
+        assert "recurrences" in tables
 
     def test_migration_not_needed_when_at_current_version(self, test_db):
         """Test that no migration occurs when already at current version."""

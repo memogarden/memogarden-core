@@ -1,6 +1,6 @@
--- Schema Version: 20251229
+-- Schema Version: 20251230
 -- Base Schema: memogarden-core-v1
--- Description: Initial schema with entity registry, transactions, users, and API keys
+-- Description: Schema with entity registry, transactions, users, API keys, and recurrences
 --
 -- Schema Philosophy:
 -- - Global entity registry stores common metadata for all entity types
@@ -18,9 +18,9 @@ CREATE TABLE IF NOT EXISTS _schema_metadata (
 );
 
 INSERT INTO _schema_metadata VALUES
-    ('version', '20251229', datetime('now')),
+    ('version', '20251230', datetime('now')),
     ('base_schema', 'memogarden-core-v1', datetime('now')),
-    ('description', 'Initial schema with entity registry, transactions, users, and API keys', datetime('now'));
+    ('description', 'Schema with entity registry, transactions, users, API keys, and recurrences', datetime('now'));
 
 -- Global entity registry (common metadata for ALL entity types)
 CREATE TABLE IF NOT EXISTS entity (
@@ -109,3 +109,31 @@ CREATE TABLE IF NOT EXISTS api_keys (
 -- Indexes for API key performance
 CREATE INDEX IF NOT EXISTS idx_api_keys_user_id ON api_keys(user_id);
 CREATE INDEX IF NOT EXISTS idx_api_keys_active ON api_keys(revoked_at) WHERE revoked_at IS NULL;
+
+-- Recurrences table (recurring transaction templates)
+CREATE TABLE IF NOT EXISTS recurrences (
+    id TEXT PRIMARY KEY,           -- References entity(id)
+    rrule TEXT NOT NULL,           -- iCal rrule string (e.g., "FREQ=MONTHLY;BYDAY=2FR")
+    entities TEXT NOT NULL,        -- JSON: transaction templates
+    valid_from TEXT NOT NULL,      -- ISO 8601 datetime (inclusive start of recurrence window)
+    valid_until TEXT,              -- ISO 8601 datetime (exclusive end of recurrence window, NULL = forever)
+
+    FOREIGN KEY (id) REFERENCES entity(id) ON DELETE CASCADE
+);
+
+-- Index for recurrence validity queries
+CREATE INDEX IF NOT EXISTS idx_recurrences_valid_from ON recurrences(valid_from);
+CREATE INDEX IF NOT EXISTS idx_recurrences_valid_until ON recurrences(valid_until) WHERE valid_until IS NOT NULL;
+
+-- Convenient view for querying recurrences with metadata
+CREATE VIEW IF NOT EXISTS recurrences_view AS
+SELECT
+    r.*,
+    e.created_at,
+    e.updated_at,
+    e.superseded_by,
+    e.superseded_at,
+    e.group_id,
+    e.derived_from
+FROM recurrences r
+JOIN entity e ON r.id = e.id;
