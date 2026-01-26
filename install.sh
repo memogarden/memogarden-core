@@ -18,7 +18,7 @@
 #   - Restarts the service
 #
 
-set -euxo pipefail  # Exit on error, undefined vars, pipe failures; verbose
+set -eo pipefail  # Exit on error, undefined vars, pipe failures
 
 #=============================================================================
 # Configuration
@@ -156,6 +156,13 @@ fi
 log_info "Ensuring data directory exists..."
 mkdir -p ./data
 
+# Fix ownership for the service user
+# When running with sudo, files are created as root, but service runs as SUDO_USER
+if [[ -n "${SUDO_USER:-}" ]] && [[ "${SUDO_USER}" != "root" ]]; then
+    log_info "Setting ownership of data directory to ${SUDO_USER}..."
+    chown -R "${SUDO_USER}:${SUDO_USER}" ./data
+fi
+
 #=============================================================================
 # Initialize database
 #=============================================================================
@@ -245,14 +252,16 @@ if systemctl is-active --quiet ${SERVICE_NAME}; then
     echo "  Stop:     sudo systemctl stop ${SERVICE_NAME}"
     echo "  Logs:     sudo journalctl -u ${SERVICE_NAME} -f"
     echo ""
-    echo "API Endpoints:"
-    echo "  Health:   http://$(hostname -I | awk '{print $1}'):5000/health"
-    echo "  API:      http://$(hostname -I | awk '{print $1}'):5000/api/v1/..."
+    echo "API Endpoints (access via Tailscale hostname or IP):"
+    echo "  Health:   http://<hostname>:5000/health"
+    echo "  API:      http://<hostname>:5000/api/v1/..."
     echo ""
     echo "Next Steps:"
     echo "  1. Check service status: sudo systemctl status ${SERVICE_NAME}"
-    echo "  2. Visit admin registration at: http://$(hostname -I | awk '{print $1}'):5000/admin/register"
-    echo "     (only accessible from localhost - SSH into the pi and use curl or port-forward)"
+    echo "  2. Create admin account (localhost only):"
+    echo "     curl -X POST http://localhost:5000/auth/admin/register \\"
+    echo "       -H 'Content-Type: application/json' \\"
+    echo "       -d '{\"username\": \"admin\", \"password\": \"your_password\"}'"
     echo ""
 else
     log_error "Service failed to start. Check logs:"
