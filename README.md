@@ -655,6 +655,183 @@ See [plan/implementation.md](../plan/implementation.md) for detailed progress.
 
 5. **Commit** with clear messages describing what and why
 
+## Production Deployment
+
+### Quick Install (Linux / Raspberry Pi)
+
+An automated install script is provided for Debian-based systems (Ubuntu, Raspberry Pi OS):
+
+```bash
+# Clone the repository
+git clone https://github.com/memogarden/memogarden-core.git
+cd memogarden-core
+
+# Run install script (requires sudo)
+sudo ./install.sh
+```
+
+The install script will:
+1. Check prerequisites (Python 3.13+, git)
+2. Install Poetry if not present
+3. Install Python dependencies
+4. Create `.env` with generated `JWT_SECRET_KEY`
+5. Initialize the database
+6. Create and enable systemd service
+7. Start the service
+
+### What Gets Installed
+
+| Artifact | Location | Purpose |
+|----------|----------|---------|
+| Application | `/opt/memogarden-core/` (or wherever you cloned) | Code and virtual environment |
+| Config | `./data/.env` | Environment variables |
+| Database | `./data/memogarden.db` | SQLite database |
+| Systemd service | `/etc/systemd/system/memogarden-core.service` | Auto-start on boot |
+| Logs | `journalctl -u memogarden-core` | Service logs |
+
+### Service Management
+
+```bash
+# Check service status
+sudo systemctl status memogarden-core
+
+# View logs (follow)
+sudo journalctl -u memogarden-core -f
+
+# Restart service
+sudo systemctl restart memogarden-core
+
+# Stop service
+sudo systemctl stop memogarden-core
+
+# Disable auto-start on boot
+sudo systemctl disable memogarden-core
+```
+
+### Updating Deployment
+
+After a `git pull`, simply reinstall:
+
+```bash
+cd memogarden-core
+git pull
+sudo ./install.sh
+```
+
+The script will:
+- Backup existing `.env` to `.env.backup.YYYYMMDD_HHMMSS`
+- Preserve your existing configuration
+- Restart the service with new code
+
+### Manual Setup (Without Install Script)
+
+If you prefer manual setup or need custom configuration:
+
+1. **Install dependencies:**
+   ```bash
+   sudo apt update
+   sudo apt install python3.13 python3.13-venv git curl
+   curl -sSL https://install.python-poetry.org | python3 -
+   ```
+
+2. **Clone and install:**
+   ```bash
+   git clone https://github.com/memogarden/memogarden-core.git
+   cd memogarden-core
+   poetry install
+   ```
+
+3. **Configure environment:**
+   ```bash
+   cp .env.example .env
+   nano .env  # Set JWT_SECRET_KEY
+   ```
+
+4. **Initialize database:**
+   ```bash
+   poetry run python -m memogarden_core.db.seed
+   ```
+
+5. **Create systemd service** (see service file template below)
+
+### Systemd Service Template
+
+For manual systemd configuration, create `/etc/systemd/system/memogarden-core.service`:
+
+```ini
+[Unit]
+Description=MemoGarden Core API
+After=network.target
+
+[Service]
+Type=notify
+User=your-user
+Group=your-user
+WorkingDirectory=/opt/memogarden-core
+EnvironmentFile=/opt/memogarden-core/.env
+ExecStart=/opt/memogarden-core/.venv/bin/gunicorn \
+    --bind 0.0.0.0:5000 \
+    --workers 2 \
+    --timeout 120 \
+    --access-logfile - \
+    --error-logfile - \
+    memogarden_core.main:app
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Note: Poetry must be configured to use in-project venvs: `poetry config virtualenvs.in-project true`
+
+Then enable and start:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable memogarden-core
+sudo systemctl start memogarden-core
+```
+
+### Production Considerations
+
+**For Tailscale-only deployment (current default):**
+- `CORS_ORIGINS=["*"]` is acceptable
+- No reverse proxy needed
+- JWT tokens over Tailscale's encrypted tunnel
+
+**For public deployment (future):**
+- Restrict `CORS_ORIGINS` to specific domains
+- Add nginx reverse proxy for HTTPS
+- Set strong `JWT_SECRET_KEY`
+- Implement database backups
+- Consider rate limiting
+
+### Troubleshooting
+
+**Service won't start:**
+```bash
+# Check detailed logs
+sudo journalctl -u memogarden-core -n 100
+
+# Check if port is already in use
+sudo ss -tlnp | grep 5000
+```
+
+**Database errors:**
+```bash
+# Check database exists and is writable
+ls -la ./data/memogarden.db
+
+# Reinitialize if needed (WARNING: destroys data)
+rm ./data/memogarden.db
+poetry run python -m memogarden_core.db.seed
+```
+
+**Permission errors:**
+```bash
+# Ensure service user owns the data directory
+sudo chown -R $USER:$USER ./data
+```
+
 ## Contributing
 
 This is a personal project, but issues and suggestions are welcome.
