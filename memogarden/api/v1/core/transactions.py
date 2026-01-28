@@ -22,9 +22,9 @@ Architecture Notes:
 import logging
 from flask import Blueprint, g, jsonify, request
 
-from ...db import get_core
-from ..validation import validate_request
-from .schemas.transaction import TransactionCreate, TransactionUpdate
+from ....db import get_core
+from ...validation import validate_request
+from ..schemas.transaction import TransactionCreate, TransactionUpdate
 
 logger = logging.getLogger(__name__)
 
