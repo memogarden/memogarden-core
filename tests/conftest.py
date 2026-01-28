@@ -8,9 +8,9 @@ from pathlib import Path
 import pytest
 from flask import g
 
-from memogarden_core.main import app
-from memogarden_core.config import settings
-from memogarden_core.auth import schemas, service, token as auth_token, api_keys
+from memogarden.main import app
+from memogarden.config import settings
+from memogarden.auth import schemas, service, token as auth_token, api_keys
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -34,7 +34,7 @@ def test_db():
     db_path = ":memory:"
 
     # Create database with schema
-    schema_path = Path(__file__).parent.parent / "memogarden_core" / "schema" / "schema.sql"
+    schema_path = Path(__file__).parent.parent / "memogarden" / "schema" / "schema.sql"
 
     db = sqlite3.connect(db_path)
     db.row_factory = sqlite3.Row
@@ -71,7 +71,7 @@ def client():
         settings.database_path = db_path
 
         # Initialize the database with schema
-        from memogarden_core.db import init_db
+        from memogarden.db import init_db
         init_db()
 
         app.config['TESTING'] = True
@@ -179,7 +179,7 @@ def authenticated_client():
         settings.database_path = db_path
 
         # Initialize the database with schema
-        from memogarden_core.db import init_db, get_core
+        from memogarden.db import init_db, get_core
         init_db()
 
         # Create a test user in the database (fast with work factor 4)

@@ -13,9 +13,9 @@ import sqlite3
 
 import bcrypt
 
-from memogarden_core.auth.schemas import UserCreate, UserResponse
-from memogarden_core.config import settings
-from memogarden_core.utils import isodatetime, uid
+from memogarden.auth.schemas import UserCreate, UserResponse
+from memogarden.config import settings
+from memogarden.utils import isodatetime, uid
 
 # ============================================================================
 # Password Hashing and Verification

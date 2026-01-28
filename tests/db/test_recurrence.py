@@ -10,10 +10,10 @@ import json
 import pytest
 from datetime import datetime
 
-from memogarden_core.db.recurrence import RecurrenceOperations
-from memogarden_core.db.entity import EntityOperations
-from memogarden_core.db import Core
-from memogarden_core.exceptions import ResourceNotFound
+from memogarden.db.recurrence import RecurrenceOperations
+from memogarden.db.entity import EntityOperations
+from memogarden.db import Core
+from memogarden.exceptions import ResourceNotFound
 
 
 class TestRecurrenceGetById:

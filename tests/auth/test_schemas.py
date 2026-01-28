@@ -15,7 +15,7 @@ import pytest
 from datetime import datetime
 from pydantic import ValidationError
 
-from memogarden_core.auth.schemas import (
+from memogarden.auth.schemas import (
     UserBase,
     UserCreate,
     UserLogin,

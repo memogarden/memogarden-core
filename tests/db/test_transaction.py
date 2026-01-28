@@ -3,10 +3,10 @@
 import pytest
 from datetime import date
 
-from memogarden_core.db.transaction import TransactionOperations
-from memogarden_core.db.entity import EntityOperations
-from memogarden_core.db import Core
-from memogarden_core.exceptions import ResourceNotFound
+from memogarden.db.transaction import TransactionOperations
+from memogarden.db.entity import EntityOperations
+from memogarden.db import Core
+from memogarden.exceptions import ResourceNotFound
 
 
 class TestTransactionGetById:

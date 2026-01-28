@@ -43,7 +43,7 @@ MemoGarden Core is the backend API for MemoGarden, a personal memory system for 
 
 4. Initialize database:
    ```bash
-   poetry run python -m memogarden_core.db.seed
+   poetry run python -m memogarden.db.seed
    ```
 
 ## Development
@@ -61,14 +61,14 @@ MemoGarden Core is the backend API for MemoGarden, a personal memory system for 
 **Manual commands (from memogarden-core directory):**
 ```bash
 # Development mode with Flask
-poetry run flask --app memogarden_core.main run --debug
+poetry run flask --app memogarden.main run --debug
 
 # Production mode with gunicorn
-poetry run gunicorn memogarden_core.main:app
+poetry run gunicorn memogarden.main:app
 
 # Or in poetry shell
 poetry shell
-flask --app memogarden_core.main run --debug
+flask --app memogarden.main run --debug
 ```
 
 The API will be available at:
@@ -83,7 +83,7 @@ The API will be available at:
 poetry run pytest
 
 # Run with coverage
-poetry run pytest --cov=memogarden_core
+poetry run pytest --cov=memogarden
 
 # Run specific test file
 poetry run pytest tests/api/test_transactions.py
@@ -102,7 +102,7 @@ For manual testing of the complete authentication and API flow:
 
 ```bash
 # From memogarden-core directory
-poetry run flask --app memogarden_core.main run --debug
+poetry run flask --app memogarden.main run --debug
 
 # Server will be available at http://localhost:5000
 ```
@@ -388,7 +388,7 @@ curl http://localhost:5000/api/v1/transactions/categories
 
 ```
 memogarden-core/
-├── memogarden_core/
+├── memogarden/
 │   ├── __init__.py
 │   ├── main.py              # Flask app with CORS, error handlers
 │   ├── config.py            # Settings with pydantic-settings
@@ -461,7 +461,7 @@ When you first start the API, you'll need to create an admin account. The admin 
 
 1. Start the API server:
    ```bash
-   poetry run flask --app memogarden_core.main run --debug
+   poetry run flask --app memogarden.main run --debug
    ```
 
 2. Open your browser to: http://localhost:5000
@@ -651,7 +651,7 @@ See [plan/implementation.md](../plan/implementation.md) for detailed progress.
 
 3. **Run tests** to verify: `poetry run pytest`
 
-4. **Check coverage** if needed: `poetry run pytest --cov=memogarden_core`
+4. **Check coverage** if needed: `poetry run pytest --cov=memogarden`
 
 5. **Commit** with clear messages describing what and why
 
@@ -749,7 +749,7 @@ If you prefer manual setup or need custom configuration:
 
 4. **Initialize database:**
    ```bash
-   poetry run python -m memogarden_core.db.seed
+   poetry run python -m memogarden.db.seed
    ```
 
 5. **Create systemd service** (see service file template below)
@@ -775,7 +775,7 @@ ExecStart=/opt/memogarden-core/.venv/bin/gunicorn \
     --timeout 120 \
     --access-logfile - \
     --error-logfile - \
-    memogarden_core.main:app
+    memogarden.main:app
 Restart=always
 
 [Install]
@@ -823,7 +823,7 @@ ls -la ./data/memogarden.db
 
 # Reinitialize if needed (WARNING: destroys data)
 rm ./data/memogarden.db
-poetry run python -m memogarden_core.db.seed
+poetry run python -m memogarden.db.seed
 ```
 
 **Permission errors:**

@@ -8,10 +8,10 @@ import pytest
 from flask import Flask
 from datetime import datetime
 
-from memogarden_core.db import get_core
-from memogarden_core.auth import service
-from memogarden_core.auth.schemas import UserCreate, APIKeyCreate
-from memogarden_core.auth.token import generate_access_token
+from memogarden.db import get_core
+from memogarden.auth import service
+from memogarden.auth.schemas import UserCreate, APIKeyCreate
+from memogarden.auth.token import generate_access_token
 
 
 # ============================================================================
@@ -61,7 +61,7 @@ class TestListAPIKeys:
             user = service.create_user(core._conn, user_data, is_admin=True)
 
             # Create multiple API keys
-            from memogarden_core.auth import api_keys
+            from memogarden.auth import api_keys
             data1 = APIKeyCreate(name="key1", expires_at=None)
             data2 = APIKeyCreate(name="key2", expires_at=None)
             api_keys.create_api_key(core._conn, user.id, data1)
@@ -175,7 +175,7 @@ class TestRevokeAPIKey:
             user_data = UserCreate(username="admin", password="SecurePass123")
             user = service.create_user(core._conn, user_data, is_admin=True)
 
-            from memogarden_core.auth import api_keys
+            from memogarden.auth import api_keys
             data = APIKeyCreate(name="test-key", expires_at=None)
             api_key = api_keys.create_api_key(core._conn, user.id, data)
             core._conn.commit()

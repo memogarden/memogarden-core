@@ -4,9 +4,9 @@ import pytest
 from datetime import date
 from pydantic import BaseModel, Field
 
-from memogarden_core.main import app
-from memogarden_core.api.validation import validate_request
-from memogarden_core.exceptions import ValidationError as MGValidationError
+from memogarden.main import app
+from memogarden.api.validation import validate_request
+from memogarden.exceptions import ValidationError as MGValidationError
 
 
 # Test Pydantic schemas

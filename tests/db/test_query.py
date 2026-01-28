@@ -2,7 +2,7 @@
 
 import pytest
 
-from memogarden_core.db.query import build_where_clause, build_update_clause
+from memogarden.db.query import build_where_clause, build_update_clause
 
 
 class TestBuildWhereClause:

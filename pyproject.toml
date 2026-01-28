@@ -1,10 +1,10 @@
 [tool.poetry]
-name = "memogarden-core"
+name = "memogarden"
 version = "0.1.0"
-description = "MemoGarden Core - Personal expenditure tracking API"
+description = "MemoGarden - Personal information system API"
 authors = ["MemoGarden Contributors"]
 readme = "README.md"
-packages = [{include = "memogarden_core"}]
+packages = [{include = "memogarden"}]
 
 [tool.poetry.dependencies]
 python = "^3.13"

@@ -6,10 +6,10 @@ that enforce security constraints on protected endpoints.
 
 import pytest
 from flask import g
-from memogarden_core.auth import api_keys, decorators, schemas, service, token
-from memogarden_core.db import get_core
-from memogarden_core.exceptions import AuthenticationError
-from memogarden_core.config import settings
+from memogarden.auth import api_keys, decorators, schemas, service, token
+from memogarden.db import get_core
+from memogarden.exceptions import AuthenticationError
+from memogarden.config import settings
 
 
 class TestLocalhostOnlyDecorator:
@@ -109,7 +109,7 @@ class TestDecoratorIntegration:
 
         # Request from non-localhost should fail (localhost only)
         # Create a new test database for this check
-        from memogarden_core.db import init_db
+        from memogarden.db import init_db
         import tempfile
         import os
 

@@ -5,7 +5,7 @@ used in the codebase: API keys, UUIDs, random tokens, etc.
 
 All third-party imports for secret generation are confined to this module.
 Other parts of the codebase should only import from this module:
-    from memogarden_core.utils import secret
+    from memogarden.utils import secret
 
 This approach:
 - Simplifies dependency management

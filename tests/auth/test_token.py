@@ -14,15 +14,15 @@ import pytest
 import jwt as pyjwt
 from datetime import datetime, timedelta
 
-from memogarden_core.auth.token import (
+from memogarden.auth.token import (
     generate_access_token,
     validate_access_token,
     decode_token_no_validation,
     get_token_expiry_remaining,
     is_token_expired,
 )
-from memogarden_core.auth.schemas import UserResponse
-from memogarden_core.utils import isodatetime
+from memogarden.auth.schemas import UserResponse
+from memogarden.utils import isodatetime
 
 
 # ============================================================================

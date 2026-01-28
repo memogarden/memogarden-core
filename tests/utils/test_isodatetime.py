@@ -2,7 +2,7 @@
 
 import pytest
 from datetime import datetime, date, UTC, timedelta
-from memogarden_core.utils import isodatetime
+from memogarden.utils import isodatetime
 
 
 class TestToTimestamp:

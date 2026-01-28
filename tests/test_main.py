@@ -1,7 +1,7 @@
 """Tests for Flask application setup."""
 
 import pytest
-from memogarden_core.main import app, ResourceNotFound, ValidationError
+from memogarden.main import app, ResourceNotFound, ValidationError
 
 
 @pytest.fixture

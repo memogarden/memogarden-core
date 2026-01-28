@@ -2,8 +2,8 @@
 
 import pytest
 from flask import Flask
-from memogarden_core.main import app
-from memogarden_core.exceptions import (
+from memogarden.main import app
+from memogarden.exceptions import (
     ResourceNotFound,
     ValidationError,
     DatabaseError,
@@ -21,8 +21,8 @@ def error_app():
     test_app.config['TRAP_BAD_REQUEST_ERRORS'] = True
 
     # Copy error handlers from main app
-    from memogarden_core.main import handle_not_found, handle_validation_error
-    from memogarden_core.main import handle_memo_garden_error, handle_internal_error
+    from memogarden.main import handle_not_found, handle_validation_error
+    from memogarden.main import handle_memo_garden_error, handle_internal_error
 
     test_app.errorhandler(ResourceNotFound)(handle_not_found)
     test_app.errorhandler(ValidationError)(handle_validation_error)

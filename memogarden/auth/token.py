@@ -12,9 +12,9 @@ from datetime import timedelta
 
 import jwt
 
-from memogarden_core.auth.schemas import TokenPayload, UserResponse
-from memogarden_core.config import settings
-from memogarden_core.utils import isodatetime
+from memogarden.auth.schemas import TokenPayload, UserResponse
+from memogarden.config import settings
+from memogarden.utils import isodatetime
 
 # ============================================================================
 # Token Generation

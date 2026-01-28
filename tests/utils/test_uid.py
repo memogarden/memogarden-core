@@ -2,7 +2,7 @@
 
 import re
 import pytest
-from memogarden_core.utils import uid
+from memogarden.utils import uid
 
 
 # UUID v4 pattern: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx

@@ -7,9 +7,9 @@ import pytest
 import sqlite3
 from datetime import datetime, timedelta
 
-from memogarden_core.auth import api_keys as api_keys_service
-from memogarden_core.auth.schemas import APIKeyCreate
-from memogarden_core.utils import isodatetime
+from memogarden.auth import api_keys as api_keys_service
+from memogarden.auth.schemas import APIKeyCreate
+from memogarden.utils import isodatetime
 
 
 # ============================================================================
@@ -76,7 +76,7 @@ class TestAPIKeyCRUD:
     def test_create_api_key_returns_response(self, test_db: sqlite3.Connection):
         """Creating an API key should return APIKeyResponse."""
         # First create a user
-        from memogarden_core.auth import service
+        from memogarden.auth import service
         user_data = service.UserCreate(username="admin", password="SecurePass123")
         user = service.create_user(test_db, user_data, is_admin=True)
 
@@ -95,7 +95,7 @@ class TestAPIKeyCRUD:
     def test_create_api_key_hashes_key(self, test_db: sqlite3.Connection):
         """API key should be hashed, not stored in plain text."""
         # First create a user
-        from memogarden_core.auth import service
+        from memogarden.auth import service
         user_data = service.UserCreate(username="admin", password="SecurePass123")
         user = service.create_user(test_db, user_data, is_admin=True)
 
@@ -118,7 +118,7 @@ class TestAPIKeyCRUD:
     def test_create_api_key_stores_prefix(self, test_db: sqlite3.Connection):
         """API key prefix should be stored separately for display."""
         # First create a user
-        from memogarden_core.auth import service
+        from memogarden.auth import service
         user_data = service.UserCreate(username="admin", password="SecurePass123")
         user = service.create_user(test_db, user_data, is_admin=True)
 
@@ -134,7 +134,7 @@ class TestAPIKeyCRUD:
     def test_create_api_key_with_expiration(self, test_db: sqlite3.Connection):
         """Creating an API key with expiration should set expires_at."""
         # First create a user
-        from memogarden_core.auth import service
+        from memogarden.auth import service
         user_data = service.UserCreate(username="admin", password="SecurePass123")
         user = service.create_user(test_db, user_data, is_admin=True)
 
@@ -146,7 +146,7 @@ class TestAPIKeyCRUD:
 
     def test_list_api_keys_empty(self, test_db: sqlite3.Connection):
         """Listing API keys for user with no keys should return empty list."""
-        from memogarden_core.auth import service
+        from memogarden.auth import service
         user_data = service.UserCreate(username="admin", password="SecurePass123")
         user = service.create_user(test_db, user_data, is_admin=True)
 
@@ -156,7 +156,7 @@ class TestAPIKeyCRUD:
     def test_list_api_keys_returns_keys(self, test_db: sqlite3.Connection):
         """Listing API keys should return all keys for user (without full keys)."""
         # First create a user
-        from memogarden_core.auth import service
+        from memogarden.auth import service
         user_data = service.UserCreate(username="admin", password="SecurePass123")
         user = service.create_user(test_db, user_data, is_admin=True)
 
@@ -178,7 +178,7 @@ class TestAPIKeyCRUD:
     def test_list_api_keys_excludes_other_users(self, test_db: sqlite3.Connection):
         """Listing API keys should only show keys for specified user."""
         # Create two users
-        from memogarden_core.auth import service
+        from memogarden.auth import service
         user1_data = service.UserCreate(username="user1", password="Pass1234")
         user2_data = service.UserCreate(username="user2", password="Pass5678")
         user1 = service.create_user(test_db, user1_data, is_admin=False)
@@ -205,7 +205,7 @@ class TestAPIKeyCRUD:
     def test_revoke_api_key_sets_revoked_at(self, test_db: sqlite3.Connection):
         """Revoking an API key should set revoked_at timestamp."""
         # First create a user
-        from memogarden_core.auth import service
+        from memogarden.auth import service
         user_data = service.UserCreate(username="admin", password="SecurePass123")
         user = service.create_user(test_db, user_data, is_admin=True)
 
@@ -224,7 +224,7 @@ class TestAPIKeyCRUD:
     def test_revoke_api_key_only_for_owner(self, test_db: sqlite3.Connection):
         """Revoking an API key should only work for the owner."""
         # Create two users
-        from memogarden_core.auth import service
+        from memogarden.auth import service
         user1_data = service.UserCreate(username="user1", password="Pass1234")
         user2_data = service.UserCreate(username="user2", password="Pass5678")
         user1 = service.create_user(test_db, user1_data, is_admin=False)
@@ -245,7 +245,7 @@ class TestAPIKeyCRUD:
     def test_revoke_api_key_idempotent(self, test_db: sqlite3.Connection):
         """Revoking an already revoked key should return False."""
         # First create a user
-        from memogarden_core.auth import service
+        from memogarden.auth import service
         user_data = service.UserCreate(username="admin", password="SecurePass123")
         user = service.create_user(test_db, user_data, is_admin=True)
 
@@ -263,7 +263,7 @@ class TestAPIKeyCRUD:
     def test_get_api_key_by_id_found(self, test_db: sqlite3.Connection):
         """Getting an API key by ID should return the key (without full key)."""
         # First create a user
-        from memogarden_core.auth import service
+        from memogarden.auth import service
         user_data = service.UserCreate(username="admin", password="SecurePass123")
         user = service.create_user(test_db, user_data, is_admin=True)
 
@@ -295,7 +295,7 @@ class TestAPIKeyAuthentication:
     def test_verify_api_key_and_get_user_valid(self, test_db: sqlite3.Connection):
         """Verifying a valid API key should return user and key ID."""
         # First create a user
-        from memogarden_core.auth import service
+        from memogarden.auth import service
         user_data = service.UserCreate(username="admin", password="SecurePass123")
         user = service.create_user(test_db, user_data, is_admin=True)
 
@@ -319,7 +319,7 @@ class TestAPIKeyAuthentication:
     def test_verify_api_key_updates_last_seen(self, test_db: sqlite3.Connection):
         """Verifying an API key should update last_seen timestamp."""
         # First create a user
-        from memogarden_core.auth import service
+        from memogarden.auth import service
         user_data = service.UserCreate(username="admin", password="SecurePass123")
         user = service.create_user(test_db, user_data, is_admin=True)
 
@@ -343,7 +343,7 @@ class TestAPIKeyAuthentication:
     def test_verify_api_key_revoked_key_fails(self, test_db: sqlite3.Connection):
         """Verifying a revoked API key should return None."""
         # First create a user
-        from memogarden_core.auth import service
+        from memogarden.auth import service
         user_data = service.UserCreate(username="admin", password="SecurePass123")
         user = service.create_user(test_db, user_data, is_admin=True)
 

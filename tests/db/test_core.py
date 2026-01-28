@@ -8,8 +8,8 @@ import pytest
 import sqlite3
 from pathlib import Path
 from datetime import date
-from memogarden_core.db import get_core, Core, _create_connection
-from memogarden_core.exceptions import ResourceNotFound
+from memogarden.db import get_core, Core, _create_connection
+from memogarden.exceptions import ResourceNotFound
 
 
 # ============================================================================
@@ -123,7 +123,7 @@ def test_core_atomic_context_manager_commits_on_success():
 
     try:
         # Initialize schema
-        schema_path = Path(__file__).parent.parent.parent / "memogarden_core" / "schema" / "schema.sql"
+        schema_path = Path(__file__).parent.parent.parent / "memogarden" / "schema" / "schema.sql"
         with sqlite3.connect(db_path) as init_conn:
             init_conn.row_factory = sqlite3.Row
             with open(schema_path, "r") as f:
@@ -170,7 +170,7 @@ def test_core_atomic_context_manager_rolls_back_on_exception():
 
     try:
         # Initialize schema
-        schema_path = Path(__file__).parent.parent.parent / "memogarden_core" / "schema" / "schema.sql"
+        schema_path = Path(__file__).parent.parent.parent / "memogarden" / "schema" / "schema.sql"
         with sqlite3.connect(db_path) as init_conn:
             init_conn.row_factory = sqlite3.Row
             with open(schema_path, "r") as f:
@@ -292,7 +292,7 @@ def test_core_atomic_multi_operation_transaction():
 
     try:
         # Initialize schema
-        schema_path = Path(__file__).parent.parent.parent / "memogarden_core" / "schema" / "schema.sql"
+        schema_path = Path(__file__).parent.parent.parent / "memogarden" / "schema" / "schema.sql"
         with sqlite3.connect(db_path) as init_conn:
             init_conn.row_factory = sqlite3.Row
             with open(schema_path, "r") as f:
@@ -339,7 +339,7 @@ def test_core_atomic_transaction_rolls_back_all_on_error():
 
     try:
         # Initialize schema
-        schema_path = Path(__file__).parent.parent.parent / "memogarden_core" / "schema" / "schema.sql"
+        schema_path = Path(__file__).parent.parent.parent / "memogarden" / "schema" / "schema.sql"
         with sqlite3.connect(db_path) as init_conn:
             init_conn.row_factory = sqlite3.Row
             with open(schema_path, "r") as f:
@@ -406,7 +406,7 @@ def test_core_entity_get_by_id_returns_entity():
 
     try:
         # Initialize schema
-        schema_path = Path(__file__).parent.parent.parent / "memogarden_core" / "schema" / "schema.sql"
+        schema_path = Path(__file__).parent.parent.parent / "memogarden" / "schema" / "schema.sql"
         with sqlite3.connect(db_path) as init_conn:
             init_conn.row_factory = sqlite3.Row
             with open(schema_path, "r") as f:
@@ -454,7 +454,7 @@ def test_core_transaction_create():
 
     try:
         # Initialize schema
-        schema_path = Path(__file__).parent.parent.parent / "memogarden_core" / "schema" / "schema.sql"
+        schema_path = Path(__file__).parent.parent.parent / "memogarden" / "schema" / "schema.sql"
         with sqlite3.connect(db_path) as init_conn:
             init_conn.row_factory = sqlite3.Row
             with open(schema_path, "r") as f:
@@ -501,7 +501,7 @@ def test_core_transaction_get_by_id():
 
     try:
         # Initialize schema
-        schema_path = Path(__file__).parent.parent.parent / "memogarden_core" / "schema" / "schema.sql"
+        schema_path = Path(__file__).parent.parent.parent / "memogarden" / "schema" / "schema.sql"
         with sqlite3.connect(db_path) as init_conn:
             init_conn.row_factory = sqlite3.Row
             with open(schema_path, "r") as f:
@@ -550,7 +550,7 @@ def test_core_transaction_list():
 
     try:
         # Initialize schema
-        schema_path = Path(__file__).parent.parent.parent / "memogarden_core" / "schema" / "schema.sql"
+        schema_path = Path(__file__).parent.parent.parent / "memogarden" / "schema" / "schema.sql"
         with sqlite3.connect(db_path) as init_conn:
             init_conn.row_factory = sqlite3.Row
             with open(schema_path, "r") as f:

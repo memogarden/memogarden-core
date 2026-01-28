@@ -26,7 +26,7 @@ MemoGarden Core uses centralized utility modules to ensure consistency and make 
 **All date/time operations MUST use the `isodatetime` module.**
 
 ```python
-from memogarden_core.utils import isodatetime
+from memogarden.utils import isodatetime
 
 # Get current UTC timestamp as ISO string
 timestamp = isodatetime.now()  # "2025-12-29T10:30:00Z"
@@ -55,7 +55,7 @@ from datetime import datetime, UTC
 now = datetime.now(UTC)
 
 # ✅ PREFERRED - use isodatetime
-from memogarden_core.utils import isodatetime
+from memogarden.utils import isodatetime
 now_ts = isodatetime.now_unix()
 ```
 
@@ -68,7 +68,7 @@ now_ts = isodatetime.now_unix()
 This module is maintained for backward compatibility:
 
 ```python
-from memogarden_core.utils import uid
+from memogarden.utils import uid
 
 user_id = uid.generate_uuid()  # "550e8400-e29b-41d4-a716-446655440000"
 ```
@@ -78,7 +78,7 @@ user_id = uid.generate_uuid()  # "550e8400-e29b-41d4-a716-446655440000"
 **ALL secret and UUID generation MUST use the `secret` module:**
 
 ```python
-from memogarden_core.utils import secret
+from memogarden.utils import secret
 
 # Generate UUID for entities
 user_id = secret.generate_uuid()
@@ -105,7 +105,7 @@ user_id = str(uuid4())
 api_key = secrets.token_hex(32)
 
 # ✅ PREFERRED - use secret utility
-from memogarden_core.utils import secret
+from memogarden.utils import secret
 user_id = secret.generate_uuid()
 api_key = secret.generate_api_key()
 ```
@@ -125,8 +125,8 @@ For first-party modules (`utils.*`, `db.*`, etc.), use **module-level imports**:
 
 ```python
 # ✅ PREFERRED
-from memogarden_core.utils import isodatetime, secret
-from memogarden_core.db import get_core
+from memogarden.utils import isodatetime, secret
+from memogarden.db import get_core
 
 timestamp = isodatetime.now()
 uuid = secret.generate_uuid()
@@ -164,7 +164,7 @@ from pydantic import BaseModel
 Use `schema/types.py` domain types for type safety:
 
 ```python
-from memogarden_core.schema.types import Timestamp, Date
+from memogarden.schema.types import Timestamp, Date
 
 # Get current timestamp
 now = Timestamp.now()  # "2025-12-29T10:30:00Z"
@@ -221,7 +221,7 @@ Use Pydantic for API validation:
 
 ```python
 from pydantic import BaseModel
-from memogarden_core.schema.types import Timestamp
+from memogarden.schema.types import Timestamp
 
 class UserResponse(BaseModel):
     id: str
@@ -241,7 +241,7 @@ class UserResponse(BaseModel):
 Example: JWT tokens
 ```python
 # ✅ Only auth/token.py imports PyJWT
-from memogarden_core.auth.token import generate_access_token
+from memogarden.auth.token import generate_access_token
 
 # Other modules use the abstraction, never import jwt directly
 token = generate_access_token(user)
@@ -292,7 +292,7 @@ user = UserResponse(
 But use `isodatetime` for **current time assertions**:
 
 ```python
-from memogarden_core.utils import isodatetime
+from memogarden.utils import isodatetime
 
 before_ts = isodatetime.now_unix()
 # ... run code ...
@@ -313,7 +313,7 @@ assert before_ts <= result_iat <= after_ts
 
 ```
 memogarden-core/
-├── memogarden_core/
+├── memogarden/
 │   ├── utils/          # Utility modules (isodatetime, uid)
 │   ├── schema/         # Database schema, types
 │   ├── db/             # Database operations (get_core)
@@ -332,7 +332,7 @@ memogarden-core/
 ### Database Operations
 
 ```python
-from memogarden_core.db import get_core
+from memogarden.db import get_core
 
 core = get_core()
 transaction = core.transaction.get_by_id(uuid)
@@ -341,7 +341,7 @@ transaction = core.transaction.get_by_id(uuid)
 ### Configuration
 
 ```python
-from memogarden_core.config import settings
+from memogarden.config import settings
 
 # Access via settings object
 db_path = settings.database_path
@@ -351,7 +351,7 @@ secret = settings.jwt_secret_key
 ### API Validation
 
 ```python
-from memogarden_core.api.v1.decorators import validate_request
+from memogarden.api.v1.decorators import validate_request
 
 @app.post("/transactions")
 @validate_request

@@ -24,7 +24,7 @@ set -eo pipefail  # Exit on error, undefined vars, pipe failures
 # Configuration
 #=============================================================================
 
-SERVICE_NAME="memogarden-core"
+SERVICE_NAME="memogarden"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 INSTALL_DIR=$(pwd)
 PYTHON_MIN_VERSION="3.13"
@@ -62,9 +62,9 @@ if [[ $EUID -ne 0 ]]; then
     exit 1
 fi
 
-# Check we're in the memogarden-core directory
-if [[ ! -f "pyproject.toml" ]] || [[ ! -d "memogarden_core" ]]; then
-    log_error "Must be run from memogarden-core directory (containing pyproject.toml)"
+# Check we're in the memogarden directory
+if [[ ! -f "pyproject.toml" ]] || [[ ! -d "memogarden" ]]; then
+    log_error "Must be run from memogarden directory (containing pyproject.toml)"
     exit 1
 fi
 
@@ -169,7 +169,7 @@ fi
 
 if [[ ! -f "./data/memogarden.db" ]]; then
     log_info "Initializing database..."
-    poetry run python -m memogarden_core.db.seed
+    poetry run python -m memogarden.db.seed
 else
     log_info "Database already exists at ./data/memogarden.db (skipping init)"
 fi
@@ -193,13 +193,13 @@ Group=${SUDO_USER:-root}
 WorkingDirectory=${INSTALL_DIR}
 Environment="PATH=$(dirname ${GUNICORN_PATH})"
 EnvironmentFile=${INSTALL_DIR}/.env
-ExecStart=${GUNICORN_PATH} --bind 0.0.0.0:5000 --workers 2 --timeout 120 --access-logfile - --error-logfile - --log-level info --capture-output memogarden_core.main:app
+ExecStart=${GUNICORN_PATH} --bind 0.0.0.0:5000 --workers 2 --timeout 120 --access-logfile - --error-logfile - --log-level info --capture-output memogarden.main:app
 ExecReload=/bin/kill -s HUP \$MAINPID
 Restart=always
 RestartSec=10
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=memogarden-core
+SyslogIdentifier=memogarden
 
 # Security hardening
 NoNewPrivileges=true

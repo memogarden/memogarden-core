@@ -1,8 +1,8 @@
 """Tests for Flask application initialization and configuration."""
 
 import pytest
-from memogarden_core.main import app
-from memogarden_core.config import settings
+from memogarden.main import app
+from memogarden.config import settings
 
 
 class TestAppInitialization:
@@ -56,7 +56,7 @@ class TestLoggingConfiguration:
     def test_logger_exists(self):
         """App logger should exist."""
         import logging
-        logger = logging.getLogger("memogarden_core.main")
+        logger = logging.getLogger("memogarden.main")
         assert logger is not None
 
     def test_logging_level_configured(self):

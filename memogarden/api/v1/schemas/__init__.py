@@ -5,7 +5,7 @@ Auth schemas are imported from the auth module for use in API endpoints.
 """
 
 # Re-export auth schemas for convenience in API endpoints
-from memogarden_core.auth.schemas import (
+from memogarden.auth.schemas import (
     AdminRegistrationResponse,
     APIKeyBase,
     APIKeyCreate,
@@ -41,7 +41,7 @@ __all__ = [
     "RecurrenceCreate",
     "RecurrenceUpdate",
     "RecurrenceResponse",
-    # Auth schemas (re-exported from memogarden_core.auth.schemas)
+    # Auth schemas (re-exported from memogarden.auth.schemas)
     "UserBase",
     "UserCreate",
     "UserLogin",

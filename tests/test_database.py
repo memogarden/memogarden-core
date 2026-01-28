@@ -4,7 +4,7 @@ import pytest
 import re
 from uuid import UUID
 from datetime import datetime
-from memogarden_core.db import get_core
+from memogarden.db import get_core
 
 
 class TestSchemaInitialization:
@@ -475,7 +475,7 @@ class TestMigration:
 
     def test_get_current_schema_version(self, test_db):
         """Test getting current schema version from database."""
-        from memogarden_core.db import _get_current_schema_version
+        from memogarden.db import _get_current_schema_version
 
         version = _get_current_schema_version(test_db)
         assert version is not None
@@ -484,7 +484,7 @@ class TestMigration:
 
     def test_migration_needed_applies_migration(self, test_db, tmp_path):
         """Test that migration is applied when database is at old version."""
-        from memogarden_core.db import _run_migrations, EXPECTED_SCHEMA_VERSION
+        from memogarden.db import _run_migrations, EXPECTED_SCHEMA_VERSION
 
         # Simulate old schema by updating version (use previous version)
         test_db.execute(
@@ -514,7 +514,7 @@ class TestMigration:
 
     def test_migration_not_needed_when_at_current_version(self, test_db):
         """Test that no migration occurs when already at current version."""
-        from memogarden_core.db import _run_migrations, EXPECTED_SCHEMA_VERSION
+        from memogarden.db import _run_migrations, EXPECTED_SCHEMA_VERSION
 
         # Verify we're at expected version
         cursor = test_db.execute("SELECT value FROM _schema_metadata WHERE key = 'version'")
@@ -529,7 +529,7 @@ class TestMigration:
 
     def test_migration_forward_compatible_with_newer_db(self, test_db):
         """Test that system is forward compatible with newer database versions."""
-        from memogarden_core.db import _run_migrations
+        from memogarden.db import _run_migrations
 
         # Simulate newer schema version
         test_db.execute(

@@ -1,6 +1,6 @@
 """Tests for configuration management."""
 
-from memogarden_core.config import Settings
+from memogarden.config import Settings
 
 
 class TestConfiguration:

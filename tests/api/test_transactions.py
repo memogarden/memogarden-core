@@ -4,8 +4,8 @@ import pytest
 from datetime import date, datetime, UTC
 from uuid import uuid4
 
-from memogarden_core.main import app
-from memogarden_core.db import get_core
+from memogarden.main import app
+from memogarden.db import get_core
 
 
 @pytest.fixture(autouse=True)
@@ -433,7 +433,7 @@ class TestLabelEndpoints:
     def test_list_labels_empty_database(self, client, auth_headers):
         """Test listing labels when no transactions exist."""
         # Clear all transactions
-        from memogarden_core.db import get_core
+        from memogarden.db import get_core
         core = get_core()
         core._conn.execute("DELETE FROM transactions")
         core._conn.commit()

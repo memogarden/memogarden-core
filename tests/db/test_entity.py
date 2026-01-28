@@ -2,8 +2,8 @@
 
 import pytest
 
-from memogarden_core.db.entity import EntityOperations
-from memogarden_core.exceptions import ResourceNotFound
+from memogarden.db.entity import EntityOperations
+from memogarden.exceptions import ResourceNotFound
 
 
 class TestEntityCreate:

@@ -6,11 +6,11 @@ Tests admin registration, login, logout, and user profile endpoints.
 import json
 import pytest
 from flask import Flask
-from memogarden_core.db import get_core
-from memogarden_core.auth import service
-from memogarden_core.auth.schemas import UserCreate
-from memogarden_core.auth.token import generate_access_token
-from memogarden_core.config import settings
+from memogarden.db import get_core
+from memogarden.auth import service
+from memogarden.auth.schemas import UserCreate
+from memogarden.auth.token import generate_access_token
+from memogarden.config import settings
 
 
 # ============================================================================

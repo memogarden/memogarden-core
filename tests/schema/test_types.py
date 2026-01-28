@@ -2,7 +2,7 @@
 
 import pytest
 from datetime import datetime, date, UTC
-from memogarden_core.schema.types import Timestamp, Date
+from memogarden.schema.types import Timestamp, Date
 
 
 class TestTimestamp:
@@ -155,4 +155,4 @@ class TestDateIntegration:
 
 
 # Import isodatetime at module level for use in tests
-from memogarden_core.utils import isodatetime
+from memogarden.utils import isodatetime

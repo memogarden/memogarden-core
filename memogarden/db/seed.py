@@ -7,9 +7,9 @@ from pathlib import Path
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from memogarden_core.config import settings  # noqa: E402
-from memogarden_core.db import get_core, init_db  # noqa: E402
-from memogarden_core.utils import isodatetime  # noqa: E402
+from memogarden.config import settings  # noqa: E402
+from memogarden.db import get_core, init_db  # noqa: E402
+from memogarden.utils import isodatetime  # noqa: E402
 
 
 def seed_transactions():

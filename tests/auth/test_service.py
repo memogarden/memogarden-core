@@ -5,9 +5,9 @@ Tests password hashing, user CRUD operations, and credential verification.
 
 import pytest
 import sqlite3
-from memogarden_core.auth import service
-from memogarden_core.auth.schemas import UserCreate
-from memogarden_core.utils import isodatetime
+from memogarden.auth import service
+from memogarden.auth.schemas import UserCreate
+from memogarden.utils import isodatetime
 
 
 # ============================================================================
